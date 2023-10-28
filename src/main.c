@@ -107,14 +107,10 @@ Delay_ms(50);
 		Debug_printf("Debug_print OK\r\n");
 
 		Encoder_Init();
-
 		Key_Init();
 		W25Q128_Init();
-
 		Lcd_Init();			//初始化TFT
-	
 		LCD_Clear(WHITE); //清屏
-
 		BACK_COLOR=BLACK;
 
 	  POINT_COLOR=WHITE; 
