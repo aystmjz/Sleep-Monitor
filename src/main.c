@@ -132,11 +132,11 @@ LED_Init();
 	//TIME[0]=DS3231_ReadByte(0x04);
 	LCD_ShowNum(100,200,Encoder_Num,5);
 
-		LCD_ShowNum(210,0,Battery_calculate(Battery*4),2);
-		if(BatteryFlag)
+		LCD_ShowNum(210,0,Get_BatteryLevel(),2);
+	if(BatteryFlag)
 	{
 		BatteryFlag=0;
-		Battery=Get_ADC();
+		Update_BatteryLevel(Get_ADC());
 	}
 
 	}
@@ -188,7 +188,7 @@ uint8_t data[5],num[5]={12,22,13};
 	if(BatteryFlag)
 	{
 		BatteryFlag=0;
-		Battery=Get_ADC();
+		Update_BatteryLevel(Get_ADC());
 	}
 	//Pub_Data(topic);
 }

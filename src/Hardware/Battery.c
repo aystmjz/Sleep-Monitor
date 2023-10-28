@@ -1,14 +1,14 @@
 #include "Battery.h"
 
-uint16_t Battery=0;
+static uint8_t Battery=0;
 uint8_t BatteryFlag=0;
 
-uint8_t Battery_calculate(uint16_t Battery)
+uint8_t Battery_calculate(uint16_t Battery_ADC)
 {
 	uint8_t BatteryLevel;
-	if(Battery>4160)return 100;
-	if(Battery<3580)return 0;
-	switch (Battery)
+	if(Battery_ADC>4160)return 100;
+	if(Battery_ADC<3580)return 0;
+	switch (Battery_ADC)
 	{
 	case 4160:BatteryLevel=100;break;
 	case 4156:BatteryLevel=99;break;
@@ -165,7 +165,25 @@ uint8_t Battery_calculate(uint16_t Battery)
 	return BatteryLevel;
 }
 
+void Update_BatteryLevel(uint16_t Battery_ADC)
+{
+    static uint8_t BatteryLevel_Last[5], BatteryLevel_Init_Flag = 0,BatteryLevel_Index=0;
+	uint16_t BatteryLevel=0;
+    if (!BatteryLevel_Init_Flag) {
+	for(uint8_t i=0;i<5;i++)BatteryLevel_Last[i]      = Battery_calculate(Battery_ADC * 4);
+    BatteryLevel_Init_Flag = 1;
+    }
+    BatteryLevel_Last[BatteryLevel_Index]=Battery_calculate(Battery_ADC * 4);
+	BatteryLevel_Index++;
+	BatteryLevel_Index%=5;
+	for(uint8_t i=0;i<5;i++)
+	{
+		BatteryLevel+=BatteryLevel_Last[i];
+	}
+	Battery=BatteryLevel/5;
+}
+
 uint8_t Get_BatteryLevel()
 {
-    return Battery_calculate(Battery*4);
+    return Battery;
 }
