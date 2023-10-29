@@ -14,8 +14,8 @@
 #include "DS3231.h"
 #include "Battery.h"
 #include "W25Q128.h"
+#include "CCS811.h"
 char* topic="aystmjz/topic/hxd";
-
 #include "oled.h"
 #include "bmp.h"
 #include "LED.h"
@@ -97,6 +97,16 @@ extern uint8_t BatteryFlag;
 
 extern uint8_t TIME[7];//秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
 
+typedef struct {
+    uint16_t eco2;
+    uint16_t tvoc;
+    uint8_t status;
+    uint8_t error_id;
+    uint16_t raw_data;
+} CCS811_Data_t;
+
+CCS811_Data_t CCS;
+
  int main(void)
  {
 int16_t Encoder_Num=0;
@@ -109,6 +119,7 @@ Delay_ms(50);
 		Encoder_Init();
 		Key_Init();
 		W25Q128_Init();
+		CCS811_Init();
 		Lcd_Init();			//初始化TFT
 		LCD_Clear(WHITE); //清屏
 		BACK_COLOR=BLACK;
@@ -124,6 +135,28 @@ LED_Init();
 	  showimage();
 	  	BACK_COLOR=WHITE;
 	POINT_COLOR=DARKBLUE;
+
+
+
+uint8_t CCS811_BUF[12];
+uint8_t CCS811_Information[10];
+uint8_t CCS811_temp = 0x5a;
+uint8_t CCS811_MeasureMode, CCS811_Status, CCS811_Error_ID;
+
+
+
+    CCS811_Wake();                                            // nWAKE pin is asserted at least 50μs before the transaction and kept asserted throughout,nWAKE pin is active low
+    CCS811_Information[0] = CCS811_ReadByte(HW_ID_REG);       // Read CCS's information  ,ID
+    CCS811_MultiReadByte(0x23, &CCS811_Information[1], 2);           // FW_Boot_Version
+    CCS811_MultiReadByte(0x24, &CCS811_Information[3], 2);           // FW_App_Version
+    CCS811_Status = CCS811_ReadByte(STATUS_REG);              // Firstly the status register is read and the APP_VALID flag is checked.
+    if (CCS811_Status & 0x10) CCS811_WriteByte(APP_START_REG, 0x00); // Used to transition the CCS811 state from boot to application mode, a write with no data is required.
+    CCS811_Status      = CCS811_ReadByte(STATUS_REG);
+    CCS811_MeasureMode = CCS811_ReadByte(MEAS_MODE_REG);
+    CCS811_WriteByte(MEAS_MODE_REG, 0x20); // Write Measure Mode Register,sensor measurement every second,no interrupt
+    CCS811_Sleep();
+
+
 	  while(1)
 	{
 		Delay_ms(500);
@@ -139,7 +172,25 @@ LED_Init();
 		Update_BatteryLevel(Get_ADC());
 	}
 
+
+	        CCS811_Wake(); // nWAKE pin is asserted at least 50μs before the transaction and kept asserted throughout,nWAKE pin is active low
+        CCS811_Status == CCS811_ReadByte(STATUS_REG);
+        CCS811_Error_ID == CCS811_ReadByte(ERROR_ID_REG);
+		//CCS811_WriteByte(MEAS_MODE_REG, DRIVE_MODE_1SEC);
+		CCS811_MeasureMode = CCS811_ReadByte(MEAS_MODE_REG);
+        CCS811_MultiReadByte(ALG_RESULT_DATA, CCS811_BUF, 8);
+        CCS811_Information[0] = CCS811_ReadByte(HW_ID_REG); // Read CCS's information  ,ID
+        CCS811_Sleep();
+        CCS.eco2 = (uint16_t)CCS811_BUF[0] * 256 + CCS811_BUF[1];
+        CCS.tvoc = (uint16_t)CCS811_BUF[2] * 256 + CCS811_BUF[3];
+		LCD_ShowNum(0,0,CCS.eco2,4);
+		LCD_ShowNum(60,0,CCS.tvoc,4);
+		LCD_ShowNum(120,0,CCS811_Information[0],4);
+        //CCS811_Information[0] = 0;
+
 	}
+
+
 	while(1)
 	{
 
