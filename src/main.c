@@ -15,6 +15,7 @@
 #include "Battery.h"
 #include "W25Q128.h"
 #include "CCS811.h"
+#include "MLX90640.h"
 char* topic="aystmjz/topic/hxd";
 #include "oled.h"
 #include "bmp.h"
@@ -107,6 +108,11 @@ typedef struct {
 
 CCS811_Data_t CCS;
 
+ uint8_t data_buf[1550]= {0};
+    uint16_t temp1=0;
+    int16_t temp2=0;
+	 float Temperature ,Humidity;
+
  int main(void)
  {
 int16_t Encoder_Num=0;
@@ -125,9 +131,53 @@ Delay_ms(50);
 		BACK_COLOR=BLACK;
 
 	  POINT_COLOR=WHITE; 
+	  MLX90640_SendInitCMD();
 Debug_printf("OK!!!\r\n");
 	//xianshi(); //显示信息
     //showimage(); //显示40*40图片
+
+
+
+while (1)
+{
+	Delay_ms(1000);
+	if(MLX90640_CheckData(data_buf))
+        {
+            
+            for(uint16_t y=0; y<24; y++)
+            {
+                for(uint16_t x=4; x<64+4; x=x+2)
+                {
+                    temp2=((int16_t)data_buf[x+1+64*y]<<8|data_buf[x+64*y]);
+                    Temperature=(float)temp2/100;
+					char str[10]={0};
+					sprintf(str," %.0f", Temperature);
+                   Debug_printf(str);
+				   Delay_ms(2);
+                   
+                }
+				Debug_printf(" \r\n----------------------\r\n");
+				Delay_ms(10);
+            }
+					Debug_printf(" \r\n++++++++++++++++++++++++++++++++++++++++++++\r\n");
+
+        }
+}
+
+
+ 
+
+    
+
+
+
+
+
+
+
+
+
+
 LED_Init();
 		DS3231_Init();
  //EC800_Init();
