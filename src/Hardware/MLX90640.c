@@ -3,6 +3,8 @@ uint8_t RX_BUF[1550]= {0};
 uint8_t CMD_SAVE[4]={0xA5,0x56,0x02,0xFD};
 uint8_t CMD_AUTO[4]={0xA5,0x35,0x02,0xDC};
 
+TempDataTypeDef TempData;
+
 //校验和检查
 uint8_t MLX90640_CheckData(uint8_t *data)
 {
