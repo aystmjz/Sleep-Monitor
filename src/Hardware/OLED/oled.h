@@ -78,7 +78,7 @@ void LCD_Show2Num(u16 x,u16 y,u16 num,u8 len);//显示2个数字
 void LCD_ShowString(u16 x,u16 y,const u8 *p);		 //显示一个字符串,16字体
  
 void showhanzi(unsigned int x,unsigned int y,unsigned char index);
-
+void LCD_WR_RGB(uint8_t colorR,uint8_t colorG,uint8_t colorB);
 
 
 

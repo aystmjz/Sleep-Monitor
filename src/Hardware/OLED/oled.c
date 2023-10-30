@@ -425,8 +425,21 @@ void LCD_ShowString(u16 x,u16 y,const u8 *p)
     }  
 }
 
-
-
+void GrayToPseColor(uint8_t grayValue, uint16_t *Color)
+{
+    uint8_t colorR,colorG,colorB;
+    *Color=0;
+    colorR=abs(0-grayValue);
+    colorG=abs(127-grayValue);
+    colorB=abs(255-grayValue);
+    *Color=(colorR<<15)|(colorG<<10)|colorB;
+}
+void LCD_WR_RGB(uint8_t colorR,uint8_t colorG,uint8_t colorB)
+{
+	uint16_t Color;
+	Color=((colorR&0xF8)<<8)|((colorG&0xFE)<<3)|((colorB&0xF8)>>3);
+	LCD_WR_DATA(Color);
+}
 
 
 

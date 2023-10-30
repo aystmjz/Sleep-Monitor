@@ -110,12 +110,12 @@ typedef struct {
 
 CCS811_Data_t CCS;
 
+uint16_t temp1 = 0;
 
-uint16_t temp1         = 0;
-
-void CheckData()
-{	float Temperature, Max = -40, Min = 400, Sum = 0;
-	uint8_t y_p = 0,data_buf[1550] = {0};
+uint8_t CheckData()
+{
+    float Temperature, Max = -40, Min = 400, Sum = 0;
+    uint8_t y_p = 0, data_buf[1550];
     if (MLX90640_CheckData(data_buf)) {
         for (int8_t y = 23; y >= 0; y--) {
             uint8_t x_p = 0;
@@ -130,22 +130,24 @@ void CheckData()
             }
             y_p++;
         }
-		TempData.Max=Max;
-		TempData.Min=Min;
+        TempData.Max     = Max;
+        TempData.Min     = Min;
         TempData.Average = Sum / (32 * 24);
         TempData.Target  = (TempData.Raw[16][12] + TempData.Raw[15][12] + TempData.Raw[16][11] + TempData.Raw[15][11]) / 4;
-	}
+        return 1;
+    }
+    return 0;
 }
-
+char str[100];
 int main(void)
 {
     int16_t Encoder_Num = 0;
-    Delay_ms(50);
+    Delay_ms(100);
     Uart_Init(115200);
 
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // NVIC_Configuration(); 	 //设置NVIC中断分组2:2位抢占优先级，2位响应优先级
     Debug_printf("Debug_print OK\r\n");
-
+LED_Init();
     Encoder_Init();
     Key_Init();
     W25Q128_Init();
@@ -161,28 +163,46 @@ int main(void)
     // showimage(); //显示40*40图片
 
     while (1) {
-        Delay_ms(1000);
-    	CheckData();
+        LED1_Turn();
+        //Delay_ms(5);
+        CheckData();
+        //Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
+        if(CheckData()){Show_TempBilinearInter(0, 0,&TempData);}
+        else Debug_printf("E\r\n");
 
-        for (uint8_t i = 0; i < 24; i++) {
-            for (uint8_t j = 0; j < 32; j++) {
-                if (TempData.Raw[j][i] >= 30) {
-                    Debug_printf(" #");
-                } else
-                    Debug_printf(" ");
-                Delay_ms(2);
-            }
-            Debug_printf(" \r\n");
-        }
 
-        Delay_ms(2);
-        Debug_printf(" \r\n++++++++++++++++++++++++++++++++++++++++++++\r\n");
-        char str[20] = {0};
-        sprintf(str, "Max=%.2f Min=%.2f Average=%.2f Target=%.2f\r\n", TempData.Max, TempData.Min, TempData.Average, TempData.Target);
-        Debug_printf(str);
+        // for (uint8_t i = 0; i < 24; i++) {
+        //     for (uint8_t j = 0; j < 32; j++) {
+        //         if (TempData.Raw[j][i] >= 30) {
+        //             Debug_printf(" #");
+        //         } else
+        //             Debug_printf(" ");
+        //         Delay_ms(2);
+        //     }
+        //     Debug_printf(" \r\n");
+
+        //     for (uint8_t i = 0; i < (Raw_H - 1) * ZOOM + 1; i++) {
+        //         for (uint8_t j = 0; j < (Raw_L - 1) * ZOOM + 1; j++) {
+        //             if (TempData.Zoom[j][i] >= 30) {
+        //                 Debug_printf(" #");
+        //             } else
+        //                 Debug_printf(" ");
+        //             Delay_ms(2);
+        //         }
+        //         Debug_printf(" \r\n");
+        //     }
+
+        //     Delay_ms(2);
+            //Debug_printf(" \r\n++++++++++++++++++++++++++++++++++++++++++++\r\n");
+             sprintf(str, "Max=%.2f Min=%.2f Average=%.2f Target=%.2f\r\n", TempData.Max, TempData.Min, TempData.Average, TempData.Target);
+
+            LCD_ShowString(0,200,"Max=");
+            LCD_ShowNum(64,200,(uint8_t)TempData.Max,2);
+             Debug_printf(str);
+        // }
     }
 
-    LED_Init();
+    
     DS3231_Init();
     // EC800_Init();
     // MQTT_Init();
@@ -283,6 +303,7 @@ int main(void)
         }
         // Pub_Data(topic);
     }
+    
 }
 
 void TIM2_IRQHandler(void)

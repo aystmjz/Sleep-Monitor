@@ -179,7 +179,7 @@ void USART1_Send_bytes(uint8_t *Buffer, uint8_t Length)
 }
 
 extern uint8_t RX_BUF[1550];
-uint8_t rebuf[1550] = {0};
+uint8_t rebuf[2500] = {0};//1550
 // MLX串口中断
 void USART1_IRQHandler(void)
 {
