@@ -18,12 +18,23 @@
 #ifndef __OLED_H
 #define __OLED_H			  	 
 #include "stm32f10x.h"                  // Device header
-#include "stdlib.h"	   
+#include "DMA.h"
+#include "sys.h"
+#include "SPI.h"
+#include "MLX90640.h"
+
+#include "Delay.h"
 #define LCD_W 240
 #define LCD_H 240
+
 #define	u8 unsigned char
 #define	u16 unsigned int
 #define	u32 unsigned long
+
+
+#define DC PAout(4) // DC
+
+#define OLED_SEND_BUFF_LEN 6000
 
 //OLED模式设置
 //0:4线串行模式
@@ -57,6 +68,13 @@
 #define OLED_DATA 1	//写数据
 
 extern  u16 BACK_COLOR, POINT_COLOR;   //背景色，画笔色
+extern uint8_t OLED_SendBuff[OLED_SEND_BUFF_LEN];
+
+void OLED_DMA_ClearCounter();
+void OLED_DMA_AddDate(uint8_t Date);
+void OLED_DMA_Transfer();
+void OLED_DMA_TransferLen(uint16_t DataLen);
+void OLED_DMA_Waite();
 
 void Lcd_Init(void); 
 void LCD_Clear(u16 Color);

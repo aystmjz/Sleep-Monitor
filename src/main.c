@@ -114,25 +114,28 @@ uint16_t temp1 = 0;
 
 uint8_t CheckData()
 {
-    float Temperature, Max = -40, Min = 400, Sum = 0;
+    uint16_t Temperature, Max = -4000, Min = 40000;
+    uint32_t Sum = 0;
     uint8_t y_p = 0, data_buf[1550];
     if (MLX90640_CheckData(data_buf)) {
         for (int8_t y = 23; y >= 0; y--) {
             uint8_t x_p = 0;
             for (uint8_t x = 4; x < 64 + 4; x += 2) {
-                int16_t Temp = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
-                Temperature  = (float)Temp / 100;
+                Temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
                 if (Temperature < Min) Min = Temperature;
                 if (Temperature > Max) Max = Temperature;
                 Sum += Temperature;
                 TempData.Raw[x_p][y_p] = Temperature;
+                if (Temperature > Temp_MAX) Temperature = Temp_MAX;
+                if (Temperature < Temp_MIN) Temperature = Temp_MIN;
+                TempData.PseColor[x_p][y_p]=((Temperature - Temp_MIN)*255) / ((Temp_MAX - Temp_MIN));
                 x_p++;
             }
             y_p++;
         }
         TempData.Max     = Max;
         TempData.Min     = Min;
-        TempData.Average = Sum / (32 * 24);
+        TempData.Average = Sum / (3200 * 2400);
         TempData.Target  = (TempData.Raw[16][12] + TempData.Raw[15][12] + TempData.Raw[16][11] + TempData.Raw[15][11]) / 4;
         return 1;
     }
@@ -158,6 +161,7 @@ LED_Init();
 
     POINT_COLOR = WHITE;
     MLX90640_SendInitCMD();
+    TempPseColor_Init();
     Debug_printf("OK!!!\r\n");
     // xianshi(); //显示信息
     // showimage(); //显示40*40图片
@@ -165,8 +169,9 @@ LED_Init();
     while (1) {
         LED1_Turn();
         //Delay_ms(5);
-        CheckData();
+        //CheckData();
         //Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
+
         if(CheckData()){Show_TempBilinearInter(0, 0,&TempData);}
         else Debug_printf("E\r\n");
 
