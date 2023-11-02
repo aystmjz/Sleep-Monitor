@@ -5,24 +5,6 @@ uint8_t CMD_AUTO[4]  = {0xA5, 0x35, 0x02, 0xDC};
 uint16_t Conter_     = 0;
 TempDataTypeDef TempData;
 ColorTypeDef PseColor[256];
-uint8_t BI_K1[ZOOM * ZOOM];
-uint8_t BI_K2[ZOOM * ZOOM];
-uint8_t BI_K3[ZOOM * ZOOM];
-uint8_t BI_K4[ZOOM * ZOOM];
-
-void BilinearInter_Init()
-{
-    for (uint8_t n = 0; n < ZOOM; n++) {
-        for (uint8_t m = 0; m < ZOOM; m++) {
-            uint16_t Data_Zoom;
-            uint8_t k1, k2, k3, k4;
-            k1 = (ZOOM - m) * (ZOOM - n);
-            k2 = (m) * (ZOOM - n);
-            k3 = (ZOOM - m) * (n);
-            k4 = (m) * (n);
-        }
-    }
-}
 
 uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB)
 {
@@ -137,12 +119,10 @@ void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataType
                 }
             }
         }
-        if (j == (Raw_H - 2)) {
-            Address_set(Location_x, Location_y + ZOOM * (j - 1), Location_x + SCREEN - 1, Location_y + ZOOM * (j - 1) - 1);
-            OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
-            OLED_DMA_Waite();
-        }
     }
+    Address_set(Location_x, Location_y + ZOOM * (Raw_H - 2), Location_x + SCREEN - 1, Location_y + ZOOM * (Raw_H - 2) - 1);
+    OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
+    OLED_DMA_Waite();
 }
 
 // 校验和检查
