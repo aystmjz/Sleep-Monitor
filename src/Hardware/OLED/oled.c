@@ -4,7 +4,7 @@
 u16 BACK_COLOR, POINT_COLOR;
 
 uint8_t OLED_SendBuff[OLED_SEND_BUFF_LEN];
-static uint16_t OLED_SendCounter=0;
+uint16_t OLED_SendCounter=0;
 
 
 void OLED_DMA_ClearCounter()
@@ -23,8 +23,7 @@ void OLED_DMA_Transfer()
 {
     DC=1;
     SPI_I2S_DMACmd(SPI1,SPI_I2S_DMAReq_Tx,ENABLE);
-    DMA1_Transfer(DMA1_Channel3, ZOOM*240*2);
-    //OLED_SendCounter++;
+    DMA1_Transfer(DMA1_Channel3, OLED_SendCounter);
 }
 
 void OLED_DMA_TransferLen(uint16_t DataLen)
@@ -36,8 +35,9 @@ void OLED_DMA_TransferLen(uint16_t DataLen)
 
 void OLED_DMA_Waite()
 {
-    while (DMA_GetFlagStatus(DMA1_FLAG_TC3) == RESET) {}
-    DMA_ClearFlag(DMA1_FLAG_TC3);
+    Delay_us(800);
+    // while (DMA_GetFlagStatus(DMA1_FLAG_TC3) != SET) {}
+    // DMA_ClearFlag(DMA1_FLAG_TC3);
 }
 
 void OLED_DMA_Init(void)

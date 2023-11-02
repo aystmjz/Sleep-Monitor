@@ -172,7 +172,7 @@ LED_Init();
         //CheckData();
         //Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
 
-        if(CheckData()){Show_TempBilinearInter(0, 0,&TempData);}
+        if(CheckData()){Show_PseColorBar(0,0);Show_TempBilinearInter(0, BAR,&TempData);}
         else Debug_printf("E\r\n");
 
 
