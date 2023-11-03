@@ -23,20 +23,24 @@ void TempPseColor_Init()
         if ((Value >= 0) && (Value <= 63)) {
             colorR = 0;
             colorG = 0;
-            colorB = round(Value / 64 * 255);
+            colorB = round(Value / 64.0 * 255.0);
         } else if ((Value >= 64) && (Value <= 127)) {
             colorR = 0;
-            colorG = round((Value - 64) / 64 * 255);
-            colorB = round((127 - Value) / 64 * 255);
+            colorG = round((Value- 64.0) / 64.0 * 255.0)+1;
+            colorB = round((127.0 - Value) / 64.0 * 255.0)-1;
         } else if ((Value >= 128) && (Value <= 191)) {
-            colorR = round((Value - 128) / 64 * 255);
+            colorR = round((Value - 128.0) / 64.0 * 255.0);
             colorG = 255;
             colorB = 0;
         } else if ((Value >= 192) && (Value <= 255)) {
             colorR = 255;
-            colorG = round((255 - Value) / 64 * 255);
+            colorG = round((255.0 - Value) / 64.0 * 255.0);
             colorB = 0;
         }
+        // sprintf(strc, "colorR=%.2d colorG=%.2d colorB=%.2d \r\n", colorR, colorG, colorB);
+
+        //     Debug_printf(strc);
+        //     Delay_ms(10);
         Color              = LCD_RGBToDATA(colorR, colorG, colorB);
         PseColor[n].RGB_H  = Color >> 8;
         PseColor[n].RGB_L  = Color;
@@ -94,35 +98,27 @@ void Show_TempRaw(uint8_t Location_x, uint8_t Location_y) // 显示原始热力�
 void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataTypeDef *Data)
 {
     for (uint8_t j = 0; j < Raw_H - 1; j++) {
-        if (j) {
-            Address_set(Location_x, Location_y + ZOOM * (j - 1), Location_x + SCREEN - 1, Location_y + ZOOM * (j - 1) - 1);
-            OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
-        }
+        Address_set(Location_x, Location_y + ZOOM * j, Location_x + SCREEN - 1, Location_y + ZOOM * j - 1);
         for (uint8_t i = 0; i < Raw_L - 1; i++) {
             for (uint8_t n = 0; n < ZOOM; n++) {
                 for (uint8_t m = 0; m < ZOOM; m++) {
                     uint16_t Data_Zoom, Index;
                     uint8_t k1, k2, k3, k4;
-                    // x=m,y=n,x1=ZOOM*i,x2=ZOOM*(i+1),y1=ZOOM*j,y2=ZOOM*(j+1)
-                    k1        = (ZOOM - m) * (ZOOM - n);
-                    k2        = m * (ZOOM - n);
-                    k3        = (ZOOM - m) * n;
-                    k4        = m * n;
-                    Data_Zoom = (k1 * Data->PseColor[i][j] + k2 * Data->PseColor[i + 1][j] + k3 * Data->PseColor[i][j + 1] + k4 * Data->PseColor[i + 1][j + 1]) / (ZOOM * ZOOM);
-                    // sprintf(strc, "k1=%d k2=%d k3=%d k4=%d Data_Zoom=%d\r\n", k1, k2, k3, k4, Data->PseColor[i][j + 1]);
-                    // Delay_ms(20);
-                    // Debug_printf(strc);
-                    Index = (n * SCREEN + ZOOM * i + m) * 2;
                     if ((ZOOM * i + m) > (SCREEN - 1)) continue;
+                    k1                       = (ZOOM - m) * (ZOOM - n);
+                    k2                       = m * (ZOOM - n);
+                    k3                       = (ZOOM - m) * n;
+                    k4                       = m * n;
+                    Data_Zoom                = (k1 * Data->PseColor[i][j] + k2 * Data->PseColor[i + 1][j] + k3 * Data->PseColor[i][j + 1] + k4 * Data->PseColor[i + 1][j + 1]) / (ZOOM * ZOOM);
+                    Index                    = (n * SCREEN + ZOOM * i + m) * 2;
                     OLED_SendBuff[Index]     = PseColor[Data_Zoom].RGB_H;
                     OLED_SendBuff[Index + 1] = PseColor[Data_Zoom].RGB_L;
                 }
             }
         }
+        OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
+        OLED_DMA_Waite();
     }
-    Address_set(Location_x, Location_y + ZOOM * (Raw_H - 2), Location_x + SCREEN - 1, Location_y + ZOOM * (Raw_H - 2) - 1);
-    OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
-    OLED_DMA_Waite();
 }
 
 // 校验和检查

@@ -35,9 +35,10 @@ void OLED_DMA_TransferLen(uint16_t DataLen)
 
 void OLED_DMA_Waite()
 {
-    Delay_us(800);
-    // while (DMA_GetFlagStatus(DMA1_FLAG_TC3) != SET) {}
-    // DMA_ClearFlag(DMA1_FLAG_TC3);
+    //Delay_us(800);
+    DMA_ClearFlag(DMA1_FLAG_TC3);
+    while (DMA_GetFlagStatus(DMA1_FLAG_TC3) != SET) {}
+    DMA_ClearFlag(DMA1_FLAG_TC3);
 }
 
 void OLED_DMA_Init(void)

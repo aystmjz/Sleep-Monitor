@@ -165,19 +165,21 @@ int main(void)
     Debug_printf("OK!!!\r\n");
     // xianshi(); //显示信息
     // showimage(); //显示40*40图片
-
+    Show_PseColorBar(0, 0);
     while (1) {
         LED1_Turn();
         // Delay_ms(5);
         // CheckData();
         // Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
+if(Key_Get())
+{
 
+}
         if (CheckData()) {
-            Show_PseColorBar(0, 0);
             Show_TempBilinearInter(0, BAR, &TempData);
             sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
             LCD_ShowString(0, 220, "Target=");
-            LCD_ShowNum(64, 220, TempData.Target / 100, 2);
+            LCD_ShowNum(64, 220, TempData.Target / 100, 3);
             Debug_printf(str);
         } else
             Debug_printf("E\r\n");
