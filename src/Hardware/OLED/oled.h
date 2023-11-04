@@ -76,6 +76,11 @@ void OLED_DMA_Transfer();
 void OLED_DMA_TransferLen(uint16_t DataLen);
 void OLED_DMA_Waite();
 
+void LCD_MDA_ShowChar(uint16_t x, uint8_t num, uint8_t mode);
+void LCD_MDA_ShowString(uint16_t x, const uint8_t *p, uint8_t mode);
+void LCD_MDA_ShowNum(uint16_t x, uint32_t num, uint8_t len, uint8_t mode);
+void LCD_MDA_TempSymbol(uint16_t x,uint8_t mode);
+
 void Lcd_Init(void); 
 void LCD_Clear(u16 Color);
 void Address_set(unsigned int x1,unsigned int y1,unsigned int x2,unsigned int y2);
@@ -94,10 +99,14 @@ void LCD_ShowChar(u16 x,u16 y,u8 num,u8 mode);//显示一个字符
 void LCD_ShowNum(u16 x,u16 y,u32 num,u8 len);//显示数字
 void LCD_Show2Num(u16 x,u16 y,u16 num,u8 len);//显示2个数字
 void LCD_ShowString(u16 x,u16 y,const u8 *p);		 //显示一个字符串,16字体
+
+void LCD_DrawCross(uint16_t x, uint16_t y, uint8_t Size, uint16_t Color);
  
 void showhanzi(unsigned int x,unsigned int y,unsigned char index);
 void LCD_WR_RGB(uint8_t colorR,uint8_t colorG,uint8_t colorB);
+void LCD_WR_Color(uint16_t Color);
 
+uint16_t RGBToColor(uint8_t colorR, uint8_t colorG, uint8_t colorB);
 
 
 //画笔颜色

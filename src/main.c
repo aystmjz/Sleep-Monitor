@@ -122,8 +122,16 @@ uint8_t CheckData()
             uint8_t x_p = 0;
             for (uint8_t x = 4; x < 64 + 4; x += 2) {
                 Temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
-                if (Temperature < Min) Min = Temperature;
-                if (Temperature > Max) Max = Temperature;
+                if (Temperature < Min) {
+                    Min = Temperature;
+                        TempData.Min_x = x_p;
+                        TempData.Min_y = y_p;
+                }
+                if (Temperature > Max) {
+                    Max = Temperature;
+                        TempData.Max_x = x_p;
+                        TempData.Max_y = y_p;
+                }
                 Sum += Temperature;
                 TempData.Raw[x_p][y_p] = Temperature;
                 if (Temperature > Temp_MAX) Temperature = Temp_MAX;
@@ -142,6 +150,7 @@ uint8_t CheckData()
     return 0;
 }
 char str[100];
+uint8_t Method=2;
 int main(void)
 {
     int16_t Encoder_Num = 0;
@@ -161,7 +170,7 @@ int main(void)
 
     POINT_COLOR = WHITE;
     MLX90640_SendInitCMD();
-    TempPseColor_Init();
+    TempPseColor_Init(GCM_Pseudo2);
     Debug_printf("OK!!!\r\n");
     // xianshi(); //显示信息
     // showimage(); //显示40*40图片
@@ -171,16 +180,16 @@ int main(void)
         // Delay_ms(5);
         // CheckData();
         // Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
-if(Key_Get())
-{
-
-}
+        if (Key_Get()) {
+            TempPseColor_Init(++Method);
+            Show_PseColorBar(0, 0);
+            Method%=9;
+        }
         if (CheckData()) {
             Show_TempBilinearInter(0, BAR, &TempData);
-            sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
-            LCD_ShowString(0, 220, "Target=");
-            LCD_ShowNum(64, 220, TempData.Target / 100, 3);
-            Debug_printf(str);
+            // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
+            // LCD_ShowString(0, 220, "Target=");
+            // Debug_printf(str);
         } else
             Debug_printf("E\r\n");
 

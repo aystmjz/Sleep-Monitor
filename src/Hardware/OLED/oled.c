@@ -4,38 +4,36 @@
 u16 BACK_COLOR, POINT_COLOR;
 
 uint8_t OLED_SendBuff[OLED_SEND_BUFF_LEN];
-uint16_t OLED_SendCounter=0;
-
+uint16_t OLED_SendCounter = 0;
 
 void OLED_DMA_ClearCounter()
 {
-    OLED_SendCounter=0;
+    OLED_SendCounter = 0;
 }
 
 void OLED_DMA_AddDate(uint8_t Date)
 {
-   OLED_SendBuff[OLED_SendCounter++]=Date;
-   OLED_SendCounter%=OLED_SEND_BUFF_LEN;
+    OLED_SendBuff[OLED_SendCounter++] = Date;
+    OLED_SendCounter %= OLED_SEND_BUFF_LEN;
 }
-
 
 void OLED_DMA_Transfer()
 {
-    DC=1;
-    SPI_I2S_DMACmd(SPI1,SPI_I2S_DMAReq_Tx,ENABLE);
+    DC = 1;
+    SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx, ENABLE);
     DMA1_Transfer(DMA1_Channel3, OLED_SendCounter);
 }
 
 void OLED_DMA_TransferLen(uint16_t DataLen)
 {
-    DC=1;
-    SPI_I2S_DMACmd(SPI1,SPI_I2S_DMAReq_Tx,ENABLE);
+    DC = 1;
+    SPI_I2S_DMACmd(SPI1, SPI_I2S_DMAReq_Tx, ENABLE);
     DMA1_Transfer(DMA1_Channel3, DataLen);
 }
 
 void OLED_DMA_Waite()
 {
-    //Delay_us(800);
+    // Delay_us(800);
     DMA_ClearFlag(DMA1_FLAG_TC3);
     while (DMA_GetFlagStatus(DMA1_FLAG_TC3) != SET) {}
     DMA_ClearFlag(DMA1_FLAG_TC3);
@@ -43,21 +41,20 @@ void OLED_DMA_Waite()
 
 void OLED_DMA_Init(void)
 {
-	DMA1_Init(DMA1_Channel3, (uint32_t)&SPI1->DR, (uint32_t)OLED_SendBuff, OLED_SEND_BUFF_LEN);
+    DMA1_Init(DMA1_Channel3, (uint32_t)&SPI1->DR, (uint32_t)OLED_SendBuff, OLED_SEND_BUFF_LEN);
 }
 
 void OLED_DCInit(void)
 {
-	GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitTypeDef GPIO_InitStructure;
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE); // 使能A端口时钟
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_4 ;
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_4;
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP; // 推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; // 速度50MHz
     GPIO_Init(GPIOA, &GPIO_InitStructure);            // 初始化GPIOD3,6
     GPIO_ResetBits(GPIOA, GPIO_Pin_4);
 }
-
 
 void writeData(u8 data)
 {
@@ -109,7 +106,7 @@ void fillScreen(u16 color)
 }
 */
 
-void LCD_Writ_Bus(char dat)                                // 串行数据写入
+void LCD_Writ_Bus(char dat) // 串行数据写入
 {
     u8 i;
 
@@ -144,7 +141,7 @@ void LCD_WR_DATA8(char da) // 发送数据-8位参数
 }
 void LCD_WR_DATA(int da)
 { //	OLED_CS_Clr();
-	DC = 1;
+    DC = 1;
     OLED_SPI_ReadWriteByte(da >> 8);
     OLED_SPI_ReadWriteByte(da);
     // OLED_CS_Set();
@@ -182,8 +179,8 @@ void Address_set(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int
 void Lcd_Init(void)
 {
     OLED_DCInit();
-	OLED_SPI_Init();
-	OLED_DMA_Init();
+    OLED_SPI_Init();
+    OLED_DMA_Init();
 
     // OLED_CS_Clr();  //打开片选使能
     // OLED_RST_Clr();
@@ -192,7 +189,7 @@ void Lcd_Init(void)
     // Delay_ms(20);
     // OLED_BLK_Set();
 
-    //Start Initial Sequence //
+    // Start Initial Sequence //
     LCD_WR_REG(0x36);
     LCD_WR_DATA8(0x00);
 
@@ -467,6 +464,19 @@ void showhanzi(unsigned int x, unsigned int y, unsigned char index)
         temp++;
     }
 }
+
+void LCD_DrawCross(uint16_t x, uint16_t y, uint8_t Size, uint16_t Color)
+{
+    Address_set(x - Size, y, x + Size, y);
+    for (int i = 0; i < (2 * Size + 1); i++) {
+        LCD_WR_DATA(Color);
+    }
+    Address_set(x, y - Size, x, y + Size);
+    for (int i = 0; i < (2 * Size + 1); i++) {
+        LCD_WR_DATA(Color);
+    }
+}
+
 // 画点
 // POINT_COLOR:此点的颜色
 void LCD_DrawPoint(u16 x, u16 y)
@@ -474,6 +484,7 @@ void LCD_DrawPoint(u16 x, u16 y)
     Address_set(x, y, x, y); // 设置光标位置
     LCD_WR_DATA(POINT_COLOR);
 }
+
 // 画一个大点
 // POINT_COLOR:此点的颜色
 void LCD_DrawPoint_big(u16 x, u16 y)
@@ -625,6 +636,7 @@ void LCD_ShowChar(u16 x, u16 y, u8 num, u8 mode)
     }
     POINT_COLOR = colortemp;
 }
+
 // m^n函数
 u32 mypow(u8 m, u8 n)
 {
@@ -632,6 +644,67 @@ u32 mypow(u8 m, u8 n)
     while (n--) result *= m;
     return result;
 }
+
+void LCD_MDA_TempSymbol(uint16_t x, uint8_t mode)
+{
+    uint8_t temp, flag = 0;
+    for (uint8_t y = 0; y < 16; y++) {
+        temp = TempSymbol[y + mode * 16];
+        for (uint8_t n = 0; n < 8; n++) {
+            if (temp & 0x01) {
+                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2]     = WHITE >> 8;
+                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2 + 1] = (uint8_t)WHITE;
+            }
+            temp >>= 1;
+        }
+        flag++;
+        flag %= 2;
+    }
+}
+
+void LCD_MDA_ShowChar(uint16_t x, uint8_t num, uint8_t mode)
+{
+    uint8_t temp;
+    num -= ' ';
+    for (uint8_t y = 0; y < 8; y++) {
+        temp = asc2_1608[(uint16_t)num * 16 + y + mode * 8]; // 调用1608字体
+        for (uint8_t n = 0; n < 8; n++) {
+            if (temp & 0x01) {
+                OLED_SendBuff[(y * SCREEN + x + n) * 2]     = WHITE >> 8;
+                OLED_SendBuff[(y * SCREEN + x + n) * 2 + 1] = (uint8_t)WHITE;
+            }
+            temp >>= 1;
+        }
+    }
+}
+
+void LCD_MDA_ShowNum(uint16_t x, uint32_t num, uint8_t len, uint8_t mode)
+{
+    u8 t, temp;
+    u8 enshow = 0;
+    num       = (u16)num;
+    for (t = 0; t < len; t++) {
+        temp = (num / mypow(10, len - t - 1)) % 10;
+        if (enshow == 0 && t < (len - 1)) {
+            if (temp == 0) {
+                LCD_MDA_ShowChar(x + 8 * t, ' ', mode);
+                continue;
+            } else
+                enshow = 1;
+        }
+        LCD_MDA_ShowChar(x + 8 * t, temp + 48, mode);
+    }
+}
+
+void LCD_MDA_ShowString(uint16_t x, const uint8_t *p, uint8_t mode)
+{
+    while (*p != '\0') {
+        LCD_MDA_ShowChar(x, *p, mode);
+        x += 8;
+        p++;
+    }
+}
+
 // 显示2个数字
 // x,y :起点坐标
 // len :数字的位数
@@ -696,6 +769,10 @@ void GrayToPseColor(uint8_t grayValue, uint16_t *Color)
     *Color = (colorR << 15) | (colorG << 10) | colorB;
 }
 
+uint16_t RGBToColor(uint8_t colorR, uint8_t colorG, uint8_t colorB)
+{
+    return ((colorR & 0xF8) << 8) | ((colorG & 0xFE) << 3) | ((colorB & 0xF8) >> 3);
+}
 
 void LCD_WR_RGB(uint8_t colorR, uint8_t colorG, uint8_t colorB)
 {
