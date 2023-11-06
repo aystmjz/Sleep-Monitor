@@ -95,9 +95,6 @@ void Pub_Data(char *topic)
     cJSON_Delete(Data_Json);
 }
 
-extern uint16_t Battery;
-extern uint8_t BatteryFlag;
-
 extern uint8_t TIME[7]; // 秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
 
 typedef struct {
@@ -123,14 +120,14 @@ uint8_t CheckData()
             for (uint8_t x = 4; x < 64 + 4; x += 2) {
                 Temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
                 if (Temperature < Min) {
-                    Min = Temperature;
-                        TempData.Min_x = x_p;
-                        TempData.Min_y = y_p;
+                    Min            = Temperature;
+                    TempData.Min_x = x_p;
+                    TempData.Min_y = y_p;
                 }
                 if (Temperature > Max) {
-                    Max = Temperature;
-                        TempData.Max_x = x_p;
-                        TempData.Max_y = y_p;
+                    Max            = Temperature;
+                    TempData.Max_x = x_p;
+                    TempData.Max_y = y_p;
                 }
                 Sum += Temperature;
                 TempData.Raw[x_p][y_p] = Temperature;
@@ -150,15 +147,92 @@ uint8_t CheckData()
     return 0;
 }
 char str[100];
-uint8_t Method=2;
+uint8_t Select_State     = 2;
+uint8_t SelectReset_Flag = 0;
+uint8_t EncoderRun_Flag  = 0;
+uint8_t MethodState      = 1;
+
+const uint8_t Method_Index[MethodNUM][3] = {{7, 8, 1}, {7, 8, 2}, {9, 10, 1}, {9, 10, 2}, {8, 11, 1}, {8, 11, 2}, {8, 11, 3}, {12, 13, 0}};
+
+void MLX90640_RefreshMethod(ConverMethod method, uint16_t color)
+{
+    BACK_COLOR  = WHITE;
+    POINT_COLOR = color;
+    LCD_ShowSymbol(184, 212, Method_Index[method][0]);
+    LCD_ShowSymbol(200, 212, Method_Index[method][1]);
+    if (Method_Index[method][2])
+        LCD_ShowNum(216, 212, Method_Index[method][2], 1);
+    else
+        LCD_Fill(216, 212, 224, 228, WHITE);
+    TempPseColor_Init(method);
+    Show_PseColorBar(0, 0);
+}
+
+void Key_RefreshSelect()
+{
+    Select_State++;
+    Select_State %= 3;
+    BACK_COLOR = WHITE;
+    switch (Select_State) {
+        case 0:
+            POINT_COLOR = BLACK;
+            LCD_ShowSymbol(120, 212, EmissivitySymbol1);
+            LCD_ShowSymbol(136, 212, EmissivitySymbol2);
+            LCD_ShowSymbol(152, 212, EmissivitySymbol3);
+            MLX90640_RefreshMethod((ConverMethod)MethodState, BLACK);
+            break;
+        case 1:
+            POINT_COLOR = RED;
+            LCD_ShowSymbol(120, 212, EmissivitySymbol1);
+            LCD_ShowSymbol(136, 212, EmissivitySymbol2);
+            LCD_ShowSymbol(152, 212, EmissivitySymbol3);
+            MLX90640_RefreshMethod((ConverMethod)MethodState, BLACK);
+
+            break;
+        case 2:
+            POINT_COLOR = BLACK;
+            LCD_ShowSymbol(120, 212, EmissivitySymbol1);
+            LCD_ShowSymbol(136, 212, EmissivitySymbol2);
+            LCD_ShowSymbol(152, 212, EmissivitySymbol3);
+            MLX90640_RefreshMethod((ConverMethod)MethodState, RED);
+
+            break;
+    }
+}
+
+void Encoder_Action(int16_t num)
+{
+    static int16_t lastNum;
+    if (num != lastNum) {
+        EncoderRun_Flag = 1;
+        switch (Select_State) {
+            case 1:
+                Emissivity += (num - lastNum) * 5;
+                if (Emissivity < 5) Emissivity = 100;
+                if (Emissivity > 100) Emissivity = 5;
+                MLX90640_SetEmissivity(Emissivity);
+                break;
+
+            case 2:
+                MethodState += num - lastNum;
+                MethodState %= MethodNUM;
+                MLX90640_RefreshMethod((ConverMethod)MethodState, RED);
+                break;
+            default:
+                break;
+        }
+
+        lastNum = num;
+    }
+    EncoderRun_Flag = 0;
+}
+
 int main(void)
 {
-    int16_t Encoder_Num = 0;
     Delay_ms(100);
     Uart_Init(115200);
-
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // NVIC_Configuration(); 	 //设置NVIC中断分组2:2位抢占优先级，2位响应优先级
     Debug_printf("Debug_print OK\r\n");
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); // NVIC_Configuration(); 	 //设置NVIC中断分组2:2位抢占优先级，2位响应优先级
     LED_Init();
     Encoder_Init();
     Key_Init();
@@ -171,27 +245,38 @@ int main(void)
     POINT_COLOR = WHITE;
     MLX90640_SendInitCMD();
     TempPseColor_Init(GCM_Pseudo2);
-    Debug_printf("OK!!!\r\n");
-    // xianshi(); //显示信息
-    // showimage(); //显示40*40图片
     Show_PseColorBar(0, 0);
+    Key_RefreshSelect();
+    Debug_printf("InitOK!\r\n");
     while (1) {
         LED1_Turn();
-        // Delay_ms(5);
-        // CheckData();
-        // Bilinear_Interpolation(&TempData);Show_TempRaw(100,100);
-        if (Key_Get()) {
-            TempPseColor_Init(++Method);
-            Show_PseColorBar(0, 0);
-            Method%=9;
-        }
+        if (Key_Get()) Key_RefreshSelect();
+        Encoder_Action(Encoder_Get());
+
         if (CheckData()) {
+            Show_TempRaw(8, 208);
             Show_TempBilinearInter(0, BAR, &TempData);
             // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
             // LCD_ShowString(0, 220, "Target=");
             // Debug_printf(str);
         } else
             Debug_printf("E\r\n");
+
+        if (Battery_Flag) {
+            Battery_Flag = 0;
+            Update_BatteryLevel(Get_ADC());
+            BACK_COLOR  = WHITE;
+            POINT_COLOR = BLACK;
+            LCD_ShowSymbol(48, 212, BatterySymbol1);
+            LCD_ShowSymbol(64, 212, BatterySymbol2);
+            LCD_ShowNum(80, 212, Get_BatteryLevel(), 2);
+            LCD_ShowSymbol(96, 212, PercentSymbol);
+        }
+
+        if (SelectReset_Flag) {
+            SelectReset_Flag = 0;
+            Key_RefreshSelect();
+        }
 
         // for (uint8_t i = 0; i < 24; i++) {
         //     for (uint8_t j = 0; j < 32; j++) {
@@ -246,13 +331,13 @@ int main(void)
     while (1) {
         Delay_ms(500);
         LED1_Turn();
-        Encoder_Num = Encoder_Get();
+
         // TIME[0]=DS3231_ReadByte(0x04);
-        LCD_ShowNum(100, 200, Encoder_Num, 5);
+        // LCD_ShowNum(100, 200, Encoder_Num, 5);
 
         LCD_ShowNum(210, 0, Get_BatteryLevel(), 2);
-        if (BatteryFlag) {
-            BatteryFlag = 0;
+        if (Battery_Flag) {
+            Battery_Flag = 0;
             Update_BatteryLevel(Get_ADC());
         }
 
@@ -276,15 +361,15 @@ int main(void)
 
         Delay_ms(500);
         LED1_Turn();
-        Encoder_Num = Encoder_Get();
+
         DS3231_ReadTime();
 
         // TIME[0]=DS3231_ReadByte(0x04);
-        LCD_ShowNum(160, 75, Encoder_Num, 5);
+        // LCD_ShowNum(160, 75, Encoder_Num, 5);
 
         LCD_ShowNum(160, 95, Key_Get(), 3);
-        LCD_ShowNum(160, 115, Battery * 4, 4);
-        LCD_ShowNum(160, 135, Battery_calculate(Battery * 4), 2);
+        // LCD_ShowNum(160, 115, Battery * 4, 4);
+        // LCD_ShowNum(160, 135, Battery_calculate(Battery * 4), 2);
 
         char len[20];
         sprintf(len, "TIME[0]:%d\n", TIME[0]);
@@ -314,8 +399,8 @@ int main(void)
         LCD_ShowNum(120, 195, data[1], 2);
         LCD_ShowNum(140, 195, data[2], 2);
 
-        if (BatteryFlag) {
-            BatteryFlag = 0;
+        if (Battery_Flag) {
+            Battery_Flag = 0;
             Update_BatteryLevel(Get_ADC());
         }
         // Pub_Data(topic);
@@ -324,17 +409,26 @@ int main(void)
 
 void TIM2_IRQHandler(void)
 {
-    static uint16_t Key_Counter = 0, Battery_Counter = 0;
+    static uint16_t key_counter = 0, battery_counter = 0, select_counter = 0;
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) {
-        Key_Counter++;
-        Battery_Counter++;
-        if (Key_Counter >= 50) {
-            Key_Counter = 0;
+        key_counter++;
+        battery_counter++;
+        if (Select_State && !EncoderRun_Flag)
+            select_counter++;
+        else
+            select_counter = 0;
+        if (key_counter >= 50) {
+            key_counter = 0;
             Key_Entry();
         }
-        if (Battery_Counter >= 5000) {
-            Battery_Counter = 0;
-            BatteryFlag     = 1;
+        if (battery_counter >= 5000) {
+            battery_counter = 0;
+            Battery_Flag    = 1;
+        }
+        if (select_counter >= 5000) {
+            select_counter   = 0;
+            Select_State     = 2;
+            SelectReset_Flag = 1;
         }
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }

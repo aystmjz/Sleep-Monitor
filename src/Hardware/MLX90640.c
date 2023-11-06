@@ -1,8 +1,10 @@
 #include "MLX90640.h"
-uint8_t RX_BUF[1550] = {0};
-uint8_t CMD_SAVE[4]  = {0xA5, 0x56, 0x02, 0xFD};
-uint8_t CMD_AUTO[4]  = {0xA5, 0x35, 0x02, 0xDC};
-uint16_t Conter_     = 0;
+
+const uint8_t CMD_SAVE[4] = {0xA5, 0x56, 0x02, 0xFD};
+const uint8_t CMD_AUTO[4] = {0xA5, 0x35, 0x02, 0xDC};
+uint8_t RX_BUF[1550]      = {0};
+int8_t Emissivity         = 95;
+extern uint8_t Select_State;
 
 TempDataTypeDef TempData;
 ColorTypeDef PseColor[256];
@@ -13,7 +15,7 @@ uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB)
     Color = (uint16_t)((colorR & 0xF8) << 8) | ((colorG & 0xFE) << 3) | ((colorB & 0xF8) >> 3);
     return Color;
 }
-char strc[100];
+
 void TempPseColor_Init(ConverMethod Method)
 {
     uint8_t colorR, colorG, colorB;
@@ -179,46 +181,6 @@ void TempPseColor_Init(ConverMethod Method)
                 }
                 break;
 
-            case GCM_Zhou:
-                if ((Value >= 0) && (Value <= 63)) {
-                    colorR = 0;
-                    colorG = round((64 - Value) / 64 * 255);
-                    colorB = 255;
-                } else if ((Value >= 64) && (Value <= 127)) {
-                    colorR = 0;
-                    colorG = round((Value - 64) / 64 * 255);
-                    colorB = round((127 - Value) / 64 * 255);
-                } else if ((Value >= 128) && (Value <= 191)) {
-                    colorR = round((Value - 128) / 64 * 255);
-                    colorG = 255;
-                    colorB = 0;
-                } else if ((Value >= 192) && (Value <= 255)) {
-                    colorR = 255;
-                    colorG = round((255 - Value) / 64 * 255);
-                    colorB = 0;
-                }
-                break;
-
-            case GCM_Ning:
-                if ((Value >= 0) && (Value <= 63)) {
-                    colorR = 0;
-                    colorG = 254 - 4 * Value;
-                    colorB = 255;
-                } else if ((Value >= 64) && (Value <= 127)) {
-                    colorR = 0;
-                    colorG = 4 * Value - 254;
-                    colorB = 510 - 4 * Value;
-                } else if ((Value >= 128) && (Value <= 191)) {
-                    colorR = 4 * Value - 510;
-                    colorG = 255;
-                    colorB = 0;
-                } else if ((Value >= 192) && (Value <= 255)) {
-                    colorR = 255;
-                    colorG = 1022 - 4 * Value;
-                    colorB = 0;
-                }
-                break;
-
             case GCM_Gray:
                 colorR = Value;
                 colorG = Value;
@@ -237,20 +199,8 @@ void TempPseColor_Init(ConverMethod Method)
         PseColor[n].colorB = colorB;
     }
     // sprintf(strc, "colorR=%.2d colorG=%.2d colorB=%.2d \r\n", colorR, colorG, colorB);
-    //     Debug_printf(strc);
-    //     Delay_ms(10);
-}
-// 伪彩 1
-void Draw_TempPseColor(float Temp)
-{
-    uint8_t Value, colorR, colorG, colorB;
-    if (Temp > Temp_MAX) Temp = Temp_MAX;
-    if (Temp < Temp_MIN) Temp = Temp_MIN;
-    Value  = (uint8_t)((255.0 * (Temp - Temp_MIN)) / (Temp_MAX - Temp_MIN));
-    colorR = abs(0 - Value);
-    colorG = abs(127 - Value);
-    colorB = abs(255 - Value);
-    LCD_WR_RGB(colorR, colorG, colorB);
+    // Debug_printf(strc);
+    // Delay_ms(10);
 }
 
 void Show_PseColorBar(uint8_t Location_x, uint8_t Location_y)
@@ -269,23 +219,23 @@ void Show_PseColorBar(uint8_t Location_x, uint8_t Location_y)
     }
 }
 
-extern u8 ref;
 void Show_TempRaw(uint8_t Location_x, uint8_t Location_y) // 显示原始热力图
 {
     Address_set(Location_x, Location_y, Location_x + Raw_L - 1, Location_y + Raw_H - 1); // 坐标设置
-    Conter_ = 0;
+    OLED_DMA_ClearCounter();
     for (uint8_t i = 0; i < Raw_H; i++) {
         for (uint8_t j = 0; j < Raw_L; j++) {
-            Draw_TempPseColor(TempData.Raw[j][i]);
+            OLED_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_H);
+            OLED_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_L);
         }
     }
-    OLED_DMA_Transfer((--Conter_) * 2);
-    while (DMA_GetFlagStatus(DMA1_FLAG_TC3) == RESET) {}
-    DMA_ClearFlag(DMA1_FLAG_TC3);
-    ref = 0;
+    OLED_DMA_Transfer();
+    OLED_DMA_Waite();
 }
+
 void Show_MinAndMax(uint8_t n)
 {
+    POINT_COLOR = WHITE;
     if (n == (TempData.Max_y) || n == (TempData.Max_y + 1)) LCD_DrawCross(((TempData.Max_x * SCREEN) / (Raw_L - 1)), (((TempData.Max_y + 1) * Raw_H * ZOOM) / (Raw_H + 1)) + BAR, 5, RED);
     if (n == (TempData.Min_y) || n == (TempData.Min_y + 1)) LCD_DrawCross(((TempData.Min_x * SCREEN) / (Raw_L - 1)), (((TempData.Min_y + 1) * Raw_H * ZOOM) / (Raw_H + 1)) + BAR, 5, RGBToColor(60, 60, 255));
 }
@@ -293,26 +243,34 @@ void Show_MinAndMax(uint8_t n)
 void Show_Text(uint8_t n)
 {
     uint8_t mode;
+    POINT_COLOR = WHITE;
     if (n == 0 || n == 1) {
         mode = n;
         LCD_MDA_ShowString(0, "MAX=", mode);
         LCD_MDA_ShowNum(32, TempData.Max / 100, 2, mode);
         LCD_MDA_ShowString(48, ".", mode);
         LCD_MDA_ShowNum(56, (TempData.Max % 100) / 10, 1, mode);
-        LCD_MDA_TempSymbol(64, mode);
+        LCD_MDA_ShowSymbol(64, TempSymbol, mode);
         LCD_MDA_ShowString(160, "MIN=", mode);
         LCD_MDA_ShowNum(192, TempData.Min / 100, 2, mode);
         LCD_MDA_ShowString(208, ".", mode);
         LCD_MDA_ShowNum(216, (TempData.Min % 100) / 10, 1, mode);
-        LCD_MDA_TempSymbol(224, mode);
+        LCD_MDA_ShowSymbol(224, TempSymbol, mode);
     }
     if (n == (Raw_H - 3) || n == (Raw_H - 2)) {
         mode = n - (Raw_H - 3);
+        if (Select_State == 1) POINT_COLOR = RED;
+        LCD_MDA_ShowString(0, "E=", mode);
+        POINT_COLOR = WHITE;
+        LCD_MDA_ShowNum(16, Emissivity / 100, 1, mode);
+        LCD_MDA_ShowString(24, ".", mode);
+        LCD_MDA_ShowNum(32, Emissivity / 10, 1, mode);
+        LCD_MDA_ShowNum(40, Emissivity % 10, 1, mode);
         LCD_MDA_ShowString(160, "TAG=", mode);
         LCD_MDA_ShowNum(192, TempData.Target / 100, 2, mode);
         LCD_MDA_ShowString(208, ".", mode);
         LCD_MDA_ShowNum(216, (TempData.Target % 100) / 10, 1, mode);
-        LCD_MDA_TempSymbol(224, mode);
+        LCD_MDA_ShowSymbol(224, TempSymbol, mode);
     }
 }
 
@@ -365,18 +323,28 @@ uint8_t MLX90640_CheckData(uint8_t *data)
         return 0;
 }
 
-void MLX90640_SendInitCMD()
+void MLX90640_SetEmissivity(uint8_t value)
 {
-    USART1_Send_bytes(CMD_AUTO, 4); // 发送自动输出指令
-    Delay_ms(50);
-    USART1_Send_bytes(CMD_SAVE, 4); // 保存
-    Delay_ms(50);
+    uint8_t sum = 0;
+    USART1_Send_byte(0xA5);
+    USART1_Send_byte(0x45);
+    USART1_Send_byte(value);
+    sum = 0xA5 + 0x45 + value;
+    USART1_Send_byte(sum);
+    Delay_ms(10);
 }
 
-void MLX90640_SendCMD(uint8_t *CMD)
+void MLX90640_SendCMD(const uint8_t *CMD)
 {
-    USART1_Send_bytes(CMD, 4);
-    Delay_ms(50);
+    USART1_Send_bytes((uint8_t *)CMD, 4);
+    Delay_ms(10);
+}
+
+void MLX90640_SendInitCMD()
+{
+    MLX90640_SendCMD(CMD_AUTO); // 发送自动输出指令
+    MLX90640_SendCMD(CMD_SAVE); // 保存
+    MLX90640_SetEmissivity(95);
 }
 
 void MLX90640_Init()

@@ -4,6 +4,8 @@
 extern char  RxBuffer[100],RxCounter;
 extern MessageTypeDef Data;
 
+char Debug_str[100];
+
 char AT_cmd[AT_cmd_Buff];
 
 

@@ -1,7 +1,7 @@
 #include "Battery.h"
 
-static uint8_t Battery=0;
-uint8_t BatteryFlag=0;
+uint8_t Battery=0;
+uint8_t Battery_Flag=0;
 
 uint8_t Battery_calculate(uint16_t Battery_ADC)
 {

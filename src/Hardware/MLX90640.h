@@ -6,17 +6,19 @@
 #include "Delay.h"
 #include "oled.h"
 
-#define abs(x)   ((x) > 0 ? (x) : -(x))
+#define abs(x)    ((x) > 0 ? (x) : -(x))
 
-#define CROSS    1
+#define CROSS     1
 
-#define Raw_H    24
-#define Raw_L    32
-#define SCREEN   240
-#define BAR      16
-#define Temp_MAX 4000
-#define Temp_MIN 2000
-#define ZOOM     8
+#define Raw_H     24
+#define Raw_L     32
+#define SCREEN    240
+#define BAR       16
+#define Temp_MAX  4000
+#define Temp_MIN  2000
+#define ZOOM      8
+
+#define MethodNUM 8
 
 typedef enum {
     GCM_Pseudo1,
@@ -26,8 +28,6 @@ typedef enum {
     GCM_Rainbow1,
     GCM_Rainbow2,
     GCM_Rainbow3,
-    GCM_Zhou,
-    GCM_Ning,
     GCM_Gray,
 } ConverMethod;
 
@@ -54,16 +54,16 @@ typedef struct ColorTypeDef {
 } ColorTypeDef;
 
 extern TempDataTypeDef TempData;
-extern uint16_t Conter_;
+extern int8_t Emissivity;
 
 uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB);
 void TempPseColor_Init(ConverMethod Method);
-void Draw_TempPseColor(float Temp);
 void Show_TempRaw(uint8_t Location_x, uint8_t Location_y);
 void Show_MinAndMax();
 uint8_t MLX90640_CheckData(uint8_t *data);
+void MLX90640_SetEmissivity(uint8_t value);
 void MLX90640_SendInitCMD();
-void MLX90640_SendCMD(uint8_t *CMD);
+void MLX90640_SendCMD(const uint8_t *CMD);
 void MLX90640_Init();
 void Show_PseColorBar(uint8_t Location_x, uint8_t Location_y);
 void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataTypeDef *Data);

@@ -11,6 +11,8 @@
 #include "Delay.h"
 #include "cJSON.h"
 
+extern char Debug_str[100];
+
 typedef struct MessageTypeDef
 {
     double Temp;

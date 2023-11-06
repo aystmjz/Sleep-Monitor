@@ -451,7 +451,7 @@ void showhanzi(unsigned int x, unsigned int y, unsigned char index)
 {
     unsigned char i, j;
     unsigned char *temp = hanzi;
-    Address_set(x, y, x + 31, y + 31); // 设置区域
+    Address_set(x, y, x + 16, y + 16); // 设置区域
     temp += index * 128;
     for (j = 0; j < 128; j++) {
         for (i = 0; i < 8; i++) {
@@ -462,6 +462,20 @@ void showhanzi(unsigned int x, unsigned int y, unsigned char index)
             }
         }
         temp++;
+    }
+}
+
+void LCD_ShowSymbol(uint16_t x, uint16_t y, uint8_t index)
+{
+    Address_set(x, y, x + 15, y + 15);
+    for (uint8_t n = 0; n < 32; n++) {
+        for (uint8_t i = 0; i < 8; i++) {
+            if ((Symbol[index][n] & (0x01 << i))) {
+                LCD_WR_DATA(POINT_COLOR);
+            } else {
+                LCD_WR_DATA(BACK_COLOR);
+            }
+        }
     }
 }
 
@@ -645,15 +659,15 @@ u32 mypow(u8 m, u8 n)
     return result;
 }
 
-void LCD_MDA_TempSymbol(uint16_t x, uint8_t mode)
+void LCD_MDA_ShowSymbol(uint16_t x, uint8_t index, uint8_t mode)
 {
     uint8_t temp, flag = 0;
     for (uint8_t y = 0; y < 16; y++) {
-        temp = TempSymbol[y + mode * 16];
+        temp = Symbol[index][y + mode * 16];
         for (uint8_t n = 0; n < 8; n++) {
             if (temp & 0x01) {
-                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2]     = WHITE >> 8;
-                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2 + 1] = (uint8_t)WHITE;
+                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2]     = POINT_COLOR >> 8;
+                OLED_SendBuff[(y / 2 * SCREEN + flag * 8 + x + n) * 2 + 1] = (uint8_t)POINT_COLOR;
             }
             temp >>= 1;
         }
@@ -670,8 +684,8 @@ void LCD_MDA_ShowChar(uint16_t x, uint8_t num, uint8_t mode)
         temp = asc2_1608[(uint16_t)num * 16 + y + mode * 8]; // 调用1608字体
         for (uint8_t n = 0; n < 8; n++) {
             if (temp & 0x01) {
-                OLED_SendBuff[(y * SCREEN + x + n) * 2]     = WHITE >> 8;
-                OLED_SendBuff[(y * SCREEN + x + n) * 2 + 1] = (uint8_t)WHITE;
+                OLED_SendBuff[(y * SCREEN + x + n) * 2]     = POINT_COLOR >> 8;
+                OLED_SendBuff[(y * SCREEN + x + n) * 2 + 1] = (uint8_t)POINT_COLOR;
             }
             temp >>= 1;
         }

@@ -166,7 +166,7 @@ void Uart3_SendStr(char *SendBuf)
 void USART1_Send_byte(uint8_t byte)
 {
     while(USART_GetFlagStatus(USART1,USART_FLAG_TC)==RESET);//等待发送完成
-    USART2->DR=byte;
+    USART1->DR=byte;
 }
 //MLX串口发送多字节数据
 void USART1_Send_bytes(uint8_t *Buffer, uint8_t Length)
