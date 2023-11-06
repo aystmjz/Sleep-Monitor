@@ -3,7 +3,7 @@
 const uint8_t CMD_SAVE[4] = {0xA5, 0x56, 0x02, 0xFD};
 const uint8_t CMD_AUTO[4] = {0xA5, 0x35, 0x02, 0xDC};
 uint8_t RX_BUF[1550]      = {0};
-int8_t Emissivity         = 95;
+uint8_t Emissivity         = 95;
 extern uint8_t Select_State;
 
 TempDataTypeDef TempData;
@@ -266,6 +266,11 @@ void Show_Text(uint8_t n)
         LCD_MDA_ShowString(24, ".", mode);
         LCD_MDA_ShowNum(32, Emissivity / 10, 1, mode);
         LCD_MDA_ShowNum(40, Emissivity % 10, 1, mode);
+        LCD_MDA_ShowString(64, "AVG=", mode);
+        LCD_MDA_ShowNum(96, TempData.Average / 100, 2, mode);
+        LCD_MDA_ShowString(112, ".", mode);
+        LCD_MDA_ShowNum(120, (TempData.Average % 100) / 10, 1, mode);
+        LCD_MDA_ShowSymbol(128, TempSymbol, mode);
         LCD_MDA_ShowString(160, "TAG=", mode);
         LCD_MDA_ShowNum(192, TempData.Target / 100, 2, mode);
         LCD_MDA_ShowString(208, ".", mode);

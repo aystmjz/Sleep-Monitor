@@ -54,7 +54,7 @@ typedef struct ColorTypeDef {
 } ColorTypeDef;
 
 extern TempDataTypeDef TempData;
-extern int8_t Emissivity;
+extern uint8_t Emissivity;
 
 uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB);
 void TempPseColor_Init(ConverMethod Method);

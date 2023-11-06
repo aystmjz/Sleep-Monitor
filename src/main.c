@@ -168,6 +168,24 @@ void MLX90640_RefreshMethod(ConverMethod method, uint16_t color)
     Show_PseColorBar(0, 0);
 }
 
+uint8_t W25Q128_UserData[2]; // 发射率，显示方式
+
+void W25Q128_ReadUserData()
+{
+    W25Q128_ReadData(0x000000, W25Q128_UserData, 2);
+    MethodState = W25Q128_UserData[0];
+    Emissivity  = W25Q128_UserData[1];
+}
+
+void W25Q128_WriteUserData()
+{
+    W25Q128_SectorErase(0x000000);
+    Delay_ms(20);
+    W25Q128_UserData[0] = MethodState;
+    W25Q128_UserData[1] = Emissivity;
+    W25Q128_PageProgram(0x000000, W25Q128_UserData, 2);
+}
+
 void Key_RefreshSelect()
 {
     Select_State++;
@@ -180,6 +198,7 @@ void Key_RefreshSelect()
             LCD_ShowSymbol(136, 212, EmissivitySymbol2);
             LCD_ShowSymbol(152, 212, EmissivitySymbol3);
             MLX90640_RefreshMethod((ConverMethod)MethodState, BLACK);
+            W25Q128_WriteUserData();
             break;
         case 1:
             POINT_COLOR = RED;
@@ -227,6 +246,27 @@ void Encoder_Action(int16_t num)
     EncoderRun_Flag = 0;
 }
 
+void Battery_Refresh()
+{
+    Battery_Flag = 0;
+    BACK_COLOR   = WHITE;
+    POINT_COLOR  = BLACK;
+    if (Update_BatteryLevel(Get_ADC())) {
+        LCD_ShowSymbol(48, 212, BatterySymbol3);
+        LCD_ShowSymbol(64, 212, BatterySymbol4);
+        LCD_ShowSymbol(80, 212, BatterySymbol5);
+        LCD_ShowSymbol(96, 212, BatterySymbol1);
+    } else {
+        LCD_ShowSymbol(48, 212, BatterySymbol1);
+        LCD_ShowSymbol(64, 212, BatterySymbol2);
+        LCD_ShowNum(80, 212, Get_BatteryLevel(), 2);
+        LCD_ShowSymbol(96, 212, PercentSymbol);
+    }
+}
+
+// sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
+// Debug_printf(str);
+
 int main(void)
 {
     Delay_ms(100);
@@ -238,17 +278,16 @@ int main(void)
     Key_Init();
     W25Q128_Init();
     CCS811_Init();
-    Lcd_Init();       // 初始化TFT
+    Lcd_Init(); // 初始化TFT
+    W25Q128_ReadUserData();
     LCD_Clear(WHITE); // 清屏
-    BACK_COLOR = BLACK;
-
-    POINT_COLOR = WHITE;
     MLX90640_SendInitCMD();
     TempPseColor_Init(GCM_Pseudo2);
     Show_PseColorBar(0, 0);
     Key_RefreshSelect();
     Debug_printf("InitOK!\r\n");
     while (1) {
+
         LED1_Turn();
         if (Key_Get()) Key_RefreshSelect();
         Encoder_Action(Encoder_Get());
@@ -256,22 +295,9 @@ int main(void)
         if (CheckData()) {
             Show_TempRaw(8, 208);
             Show_TempBilinearInter(0, BAR, &TempData);
-            // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
-            // LCD_ShowString(0, 220, "Target=");
-            // Debug_printf(str);
-        } else
-            Debug_printf("E\r\n");
-
-        if (Battery_Flag) {
-            Battery_Flag = 0;
-            Update_BatteryLevel(Get_ADC());
-            BACK_COLOR  = WHITE;
-            POINT_COLOR = BLACK;
-            LCD_ShowSymbol(48, 212, BatterySymbol1);
-            LCD_ShowSymbol(64, 212, BatterySymbol2);
-            LCD_ShowNum(80, 212, Get_BatteryLevel(), 2);
-            LCD_ShowSymbol(96, 212, PercentSymbol);
         }
+
+        if (Battery_Flag) Battery_Refresh();
 
         if (SelectReset_Flag) {
             SelectReset_Flag = 0;

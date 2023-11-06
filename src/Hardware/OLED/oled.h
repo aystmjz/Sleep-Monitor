@@ -29,11 +29,15 @@
 
 #define TempSymbol         0
 #define PercentSymbol      1
-#define BatterySymbol1           2
-#define BatterySymbol2           3
-#define EmissivitySymbol1 4
-#define EmissivitySymbol2 5
-#define EmissivitySymbol3 6
+#define BatterySymbol1     2
+#define BatterySymbol2     3
+#define BatterySymbol3     14
+#define BatterySymbol4     15
+#define BatterySymbol5     16
+#define EmissivitySymbol1  4
+#define EmissivitySymbol2  5
+#define EmissivitySymbol3  6
+
 
 
 #define u8                 unsigned char

@@ -2,10 +2,12 @@
 #define __BATTERY_H
 #include "stm32f10x.h"                  // Device header
 
+#define Battery_CHARGE 4000
+
 extern uint8_t Battery_Flag;
 
 uint8_t Battery_calculate(uint16_t Battery);
-void Update_BatteryLevel(uint16_t Battery_ADC);
+uint8_t Update_BatteryLevel(uint16_t Battery_ADC);
 uint8_t Get_BatteryLevel();
 
 #endif
