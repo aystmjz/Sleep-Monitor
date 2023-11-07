@@ -18,7 +18,7 @@
 #include "MLX90640.h"
 char *topic = "aystmjz/topic/hxd";
 #include "oled.h"
-#include "bmp.h"
+// #include "bmp.h"
 #include "LED.h"
 u8 ref = 0;                 // 刷新显示
 u16 vx = 15542, vy = 11165; // 比例因子，此值除以1000之后表示多少个AD值代表一个像素点
@@ -43,7 +43,7 @@ void xianshi()              // 显示信息
 #define Image_X 132
 #define Image_Y 150
 #define Image_L 50
-
+/*
 void showimage() // 显示40*40图片
 {
 
@@ -71,7 +71,7 @@ void showimage_() // 显示40*40图片
         }
     }
     ref = 0;
-}
+}*/
 
 uint8_t TEST = 0;
 MessageTypeDef Data;
@@ -266,6 +266,7 @@ void Battery_Refresh()
 
 // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
 // Debug_printf(str);
+uint8_t PubData_Flag = 0;
 
 int main(void)
 {
@@ -281,6 +282,8 @@ int main(void)
     Lcd_Init(); // 初始化TFT
     W25Q128_ReadUserData();
     LCD_Clear(WHITE); // 清屏
+    EC800_Init();
+    MQTT_Init();
     MLX90640_SendInitCMD();
     TempPseColor_Init(GCM_Pseudo2);
     Show_PseColorBar(0, 0);
@@ -302,6 +305,12 @@ int main(void)
         if (SelectReset_Flag) {
             SelectReset_Flag = 0;
             Key_RefreshSelect();
+        }
+
+        if (PubData_Flag) {
+            PubData_Flag = 0;
+            Data.Temp    = TempData.Target / 100;
+            Pub_Data(topic);
         }
 
         // for (uint8_t i = 0; i < 24; i++) {
@@ -429,16 +438,17 @@ int main(void)
             Battery_Flag = 0;
             Update_BatteryLevel(Get_ADC());
         }
-        // Pub_Data(topic);
     }
 }
 
 void TIM2_IRQHandler(void)
 {
-    static uint16_t key_counter = 0, battery_counter = 0, select_counter = 0;
+    static uint16_t key_counter = 0, battery_counter = 0, select_counter = 0, pubDat_counter = 0;
+
     if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) {
         key_counter++;
         battery_counter++;
+        pubDat_counter++;
         if (Select_State && !EncoderRun_Flag)
             select_counter++;
         else
@@ -455,6 +465,10 @@ void TIM2_IRQHandler(void)
             select_counter   = 0;
             Select_State     = 2;
             SelectReset_Flag = 1;
+        }
+        if (pubDat_counter >= 10000) {
+            pubDat_counter = 0;
+            PubData_Flag   = 1;
         }
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }

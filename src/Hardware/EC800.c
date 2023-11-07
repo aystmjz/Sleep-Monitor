@@ -235,16 +235,16 @@ void MQTT_Init(void)
 	// 	ATcmd_Send(cacert);
 	// }
 	ATcmd_MakeSend(4,"QMTCFG","recv/mode","0","0","1");
-	ATcmd_MakeSend(4,"QMTCFG","SSL","0","1","2");
-	ATcmd_MakeSend(3,"QSSLCFG","seclevel","2","1");
-	ATcmd_MakeSend(3,"QSSLCFG","cacert","2","cacert.pem");
-	ATcmd_MakeSend(3,"QSSLCFG","sslversion","2","4");
-	ATcmd_MakeSend(3,"QSSLCFG","ciphersuite","2","0XFFFF");
-	ATcmd_MakeSend(3,"QSSLCFG","ignorelocaltime","2","1");
+	ATcmd_MakeSend(4,"QMTCFG","SSL","0","0","2");
+	// ATcmd_MakeSend(3,"QSSLCFG","seclevel","2","1");
+	// ATcmd_MakeSend(3,"QSSLCFG","cacert","2","cacert.pem");
+	// ATcmd_MakeSend(3,"QSSLCFG","sslversion","2","4");
+	// ATcmd_MakeSend(3,"QSSLCFG","ciphersuite","2","0XFFFF");
+	// ATcmd_MakeSend(3,"QSSLCFG","ignorelocaltime","2","1");
 
 	for (uint8_t i = 1; i <=5; i++)
 	{
-		ATcmd_Make(3,"QMTOPEN","0","broker.emqx.io","8883");//通过TCP方式去连接MQTT服务器
+		ATcmd_Make(3,"QMTOPEN","0","broker.emqx.io","1883");//通过TCP方式去连接MQTT服务器
 		ATcmd_Wait("QMTOPEN: 0,0",NULL,5000,1);
 		if(ATcmd_Scan("QMTOPEN: 0,2"))
 		{Debug_printf("MQTT服务器已连接\r\n");break;}
