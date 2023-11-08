@@ -11,7 +11,7 @@ void W25Q128_SPI_Start(void);
 void W25Q128_SPI_Stop(void);
 uint8_t W25Q128_SPI_SwapByte(uint8_t ByteSend);
 
-void OLED_SPI_Init(void);
-uint8_t OLED_SPI_ReadWriteByte(uint8_t TxData);
+void LCD_SPI_Init(void);
+uint8_t LCD_SPI_ReadWriteByte(uint8_t TxData);
 
 #endif

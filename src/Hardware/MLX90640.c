@@ -6,6 +6,8 @@ uint8_t RX_BUF[1550]      = {0};
 uint8_t Emissivity         = 95;
 extern uint8_t Select_State;
 
+const char *MQTT_Topic = "aystmjz/topic/hxd";
+
 TempDataTypeDef TempData;
 ColorTypeDef PseColor[256];
 
@@ -203,34 +205,34 @@ void TempPseColor_Init(ConverMethod Method)
     // Delay_ms(10);
 }
 
-void Show_PseColorBar(uint8_t Location_x, uint8_t Location_y)
+void Show_PseColorBar(uint8_t x, uint8_t y)
 {
-    Address_set(Location_x, Location_y, Location_x + SCREEN - 1, Location_y + BAR - 1); // 坐标设置
+    LCD_SetAddress(x, y, x + SCREEN - 1, y + BAR - 1); // 坐标设置
     for (uint8_t n = 0; n < (BAR / ZOOM); n++) {
-        OLED_DMA_ClearCounter();
+        LCD_DMA_ClearCounter();
         for (uint8_t i = 0; i < ZOOM; i++) {
             for (uint8_t Value = 10; Value < 250; Value++) {
-                OLED_DMA_AddDate(PseColor[Value].RGB_H);
-                OLED_DMA_AddDate(PseColor[Value].RGB_L);
+                LCD_DMA_AddDate(PseColor[Value].RGB_H);
+                LCD_DMA_AddDate(PseColor[Value].RGB_L);
             }
         }
-        OLED_DMA_Transfer();
-        OLED_DMA_Waite();
+        LCD_DMA_Transfer();
+        LCD_DMA_Waite();
     }
 }
 
-void Show_TempRaw(uint8_t Location_x, uint8_t Location_y) // 显示原始热力图
+void Show_TempRaw(uint8_t x, uint8_t y) // 显示原始热力图
 {
-    Address_set(Location_x, Location_y, Location_x + Raw_L - 1, Location_y + Raw_H - 1); // 坐标设置
-    OLED_DMA_ClearCounter();
+    LCD_SetAddress(x, y, x + Raw_L - 1, y + Raw_H - 1); // 坐标设置
+    LCD_DMA_ClearCounter();
     for (uint8_t i = 0; i < Raw_H; i++) {
         for (uint8_t j = 0; j < Raw_L; j++) {
-            OLED_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_H);
-            OLED_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_L);
+            LCD_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_H);
+            LCD_DMA_AddDate(PseColor[TempData.PseColor[j][i]].RGB_L);
         }
     }
-    OLED_DMA_Transfer();
-    OLED_DMA_Waite();
+    LCD_DMA_Transfer();
+    LCD_DMA_Waite();
 }
 
 void Show_MinAndMax(uint8_t n)
@@ -279,10 +281,10 @@ void Show_Text(uint8_t n)
     }
 }
 
-void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataTypeDef *Data)
+void Show_TempBilinearInter(uint8_t x, uint8_t y, TempDataTypeDef *Data)
 {
     for (uint8_t j = 0; j < Raw_H - 1; j++) {
-        Address_set(Location_x, Location_y + ZOOM * j, Location_x + SCREEN - 1, Location_y + ZOOM * j - 1);
+        LCD_SetAddress(x, y + ZOOM * j, x + SCREEN - 1, y + ZOOM * j - 1);
         for (uint8_t i = 0; i < Raw_L - 1; i++) {
             for (uint8_t n = 0; n < ZOOM; n++) {
                 for (uint8_t m = 0; m < ZOOM; m++) {
@@ -295,14 +297,14 @@ void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataType
                     k4                       = m * n;
                     Data_Zoom                = (k1 * Data->PseColor[i][j] + k2 * Data->PseColor[i + 1][j] + k3 * Data->PseColor[i][j + 1] + k4 * Data->PseColor[i + 1][j + 1]) / (ZOOM * ZOOM);
                     Index                    = (n * SCREEN + ZOOM * i + m) * 2;
-                    OLED_SendBuff[Index]     = PseColor[Data_Zoom].RGB_H;
-                    OLED_SendBuff[Index + 1] = PseColor[Data_Zoom].RGB_L;
+                    LCD_SendBuff[Index]     = PseColor[Data_Zoom].RGB_H;
+                    LCD_SendBuff[Index + 1] = PseColor[Data_Zoom].RGB_L;
                 }
             }
         }
         Show_Text(j);
-        OLED_DMA_TransferLen(ZOOM * SCREEN * 2);
-        OLED_DMA_Waite();
+        LCD_DMA_TransferLen(ZOOM * SCREEN * 2);
+        LCD_DMA_Waite();
         if (j == (Raw_H / 2) && CROSS) LCD_DrawCross(SCREEN / 2, Raw_H * ZOOM / 2 + BAR, 5, WHITE);
         Show_MinAndMax(j);
     }
@@ -356,4 +358,42 @@ void MLX90640_Init()
 {
     MLX90640_SendInitCMD();
     uart1_init(11520);
+}
+
+uint8_t MLX90640_RefreshData(void)
+{
+    int16_t Temperature, Max = -1000, Min = 10000;
+    uint32_t Sum = 0;
+    uint8_t y_p  = 0, data_buf[1550];
+    if (MLX90640_CheckData(data_buf)) {
+        for (int8_t y = 23; y >= 0; y--) {
+            uint8_t x_p = 0;
+            for (uint8_t x = 4; x < 64 + 4; x += 2) {
+                Temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
+                if (Temperature < Min) {
+                    Min            = Temperature;
+                    TempData.Min_x = x_p;
+                    TempData.Min_y = y_p;
+                }
+                if (Temperature > Max) {
+                    Max            = Temperature;
+                    TempData.Max_x = x_p;
+                    TempData.Max_y = y_p;
+                }
+                Sum += Temperature;
+                TempData.Raw[x_p][y_p] = Temperature;
+                if (Temperature > Temp_MAX) Temperature = Temp_MAX;
+                if (Temperature < Temp_MIN) Temperature = Temp_MIN;
+                TempData.PseColor[x_p][y_p] = ((Temperature - Temp_MIN) * 255) / ((Temp_MAX - Temp_MIN));
+                x_p++;
+            }
+            y_p++;
+        }
+        TempData.Max     = Max;
+        TempData.Min     = Min;
+        TempData.Average = Sum / (32 * 24);
+        TempData.Target  = (TempData.Raw[16][12] + TempData.Raw[15][12] + TempData.Raw[16][11] + TempData.Raw[15][11]) / 4;
+        return 1;
+    }
+    return 0;
 }

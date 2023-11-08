@@ -4,7 +4,9 @@
 #include "stm32f10x.h" // Device header
 #include "usart.h"
 #include "Delay.h"
-#include "oled.h"
+#include "lcd.h"
+
+extern const char *MQTT_Topic;
 
 #define abs(x)    ((x) > 0 ? (x) : -(x))
 
@@ -31,20 +33,16 @@ typedef enum {
     GCM_Gray,
 } ConverMethod;
 
-typedef struct TempDataTypeDef {
+typedef struct {
     uint16_t Raw[Raw_L][Raw_H];
-    // float Zoom[(Raw_L-1)*ZOOM+1][(Raw_H-1)*ZOOM+1];
-    // float Zoom[(Raw_L - 1) * ZOOM + 1][10];
     uint8_t PseColor[Raw_L][Raw_H];
-    uint16_t Max;
-    uint8_t Max_x, Max_y;
-    uint16_t Min;
-    uint8_t Min_x, Min_y;
+    uint16_t Max, Min;
+    uint8_t Max_x, Max_y, Min_x, Min_y;
     uint16_t Average;
     uint16_t Target;
 } TempDataTypeDef;
 
-typedef struct ColorTypeDef {
+typedef struct {
     uint8_t colorR;
     uint8_t colorG;
     uint8_t colorB;
@@ -58,14 +56,15 @@ extern uint8_t Emissivity;
 
 uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB);
 void TempPseColor_Init(ConverMethod Method);
-void Show_TempRaw(uint8_t Location_x, uint8_t Location_y);
+void Show_TempRaw(uint8_t x, uint8_t y);
 void Show_MinAndMax();
 uint8_t MLX90640_CheckData(uint8_t *data);
 void MLX90640_SetEmissivity(uint8_t value);
 void MLX90640_SendInitCMD();
 void MLX90640_SendCMD(const uint8_t *CMD);
 void MLX90640_Init();
-void Show_PseColorBar(uint8_t Location_x, uint8_t Location_y);
-void Show_TempBilinearInter(uint8_t Location_x, uint8_t Location_y, TempDataTypeDef *Data);
+void Show_PseColorBar(uint8_t x, uint8_t y);
+void Show_TempBilinearInter(uint8_t x, uint8_t y, TempDataTypeDef *Data);
+uint8_t MLX90640_RefreshData(void);
 
 #endif

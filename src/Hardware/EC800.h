@@ -11,9 +11,7 @@
 #include "Delay.h"
 #include "cJSON.h"
 
-extern char Debug_str[100];
-
-typedef struct MessageTypeDef
+typedef struct
 {
     double Temp;
 	double Hum;
@@ -21,7 +19,10 @@ typedef struct MessageTypeDef
 	uint8_t Led;
 	uint8_t Beep;
 
-} MessageTypeDef;
+}Environment_DataTypeDef;
+
+extern char Debug_str[100];
+extern Environment_DataTypeDef Data;
 
 #define ATcmd_Set(message) sprintf(AT_cmd,(message))
 #define AT_cmd_Buff 128
@@ -38,9 +39,10 @@ void ATcmd_MakeSend(int num,const char* cmd, ...);
 void Clear_Buffer(void);
 void EC800_Init(void);
 void MQTT_Init(void);
-uint16_t Get_ADC();
-void Pub_String(char* topic,char* str);
-void Pub_Json(char* topic,cJSON* json);
+uint16_t EC800_GetADC();
+void Pub_String(const char* topic,char* str);
+void Pub_Json(const char* topic,cJSON* json);
+void Pub_Data(const char *topic);
 
 #endif
 

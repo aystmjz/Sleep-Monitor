@@ -1,25 +1,6 @@
-
-/******************** (C) COPYRIGHT  长江智动科技 ********************
- * 文件名  ：main.c
- * 描述    ：CJMCU测试代码
- * 库版本  ：3.5
- * 编译软件：KEIL4
- * 作者    ：D.K.Ann
- * 店铺地址：https://cjmcu.taobao.com/
- * 修改时间 ：2016-11-4
- **********************************************************************************/
-/********************************************************************
-硬件接法：
- STM32
-SCL---PB6
-SDA---PB7
-aWAKE---PA4
-STM32---FT232
-TX---RX
-RX---TX
-波特率115200
-********************************************************************/
 #include "CCS811.h"
+
+CCS811_DataTypeDef CCS;
 
 void CCS811_WriteByte(uint8_t WordAddress, uint8_t Data)
 {
@@ -72,7 +53,6 @@ void CCS811_MultiReadByte(uint8_t WordAddress, uint8_t *Data_p, uint8_t Length)
     CCS811_I2C_Stop();
 }
 
-
 void CCS811_Init()
 {
     CCS811_I2C_Init();
@@ -85,3 +65,41 @@ void CCS811_Init()
     CCS811_Sleep();
 }
 
+void f()
+{
+    uint8_t CCS811_BUF[12];
+    uint8_t CCS811_Information[10];
+    uint8_t CCS811_temp = 0x5a;
+    uint8_t CCS811_MeasureMode, CCS811_Status, CCS811_Error_ID;
+
+    CCS811_Wake();                                                   // nWAKE pin is asserted at least 50μs before the transaction and kept asserted throughout,nWAKE pin is active low
+    CCS811_Information[0] = CCS811_ReadByte(HW_ID_REG);              // Read CCS's information  ,ID
+    CCS811_MultiReadByte(0x23, &CCS811_Information[1], 2);           // FW_Boot_Version
+    CCS811_MultiReadByte(0x24, &CCS811_Information[3], 2);           // FW_App_Version
+    CCS811_Status = CCS811_ReadByte(STATUS_REG);                     // Firstly the status register is read and the APP_VALID flag is checked.
+    if (CCS811_Status & 0x10) CCS811_WriteByte(APP_START_REG, 0x00); // Used to transition the CCS811 state from boot to application mode, a write with no data is required.
+    CCS811_Status      = CCS811_ReadByte(STATUS_REG);
+    CCS811_MeasureMode = CCS811_ReadByte(MEAS_MODE_REG);
+    CCS811_WriteByte(MEAS_MODE_REG, 0x20); // Write Measure Mode Register,sensor measurement every second,no interrupt
+    CCS811_Sleep();
+
+
+
+
+
+
+            CCS811_Wake(); // nWAKE pin is asserted at least 50μs before the transaction and kept asserted throughout,nWAKE pin is active low
+        CCS811_Status == CCS811_ReadByte(STATUS_REG);
+        CCS811_Error_ID == CCS811_ReadByte(ERROR_ID_REG);
+        // CCS811_WriteByte(MEAS_MODE_REG, DRIVE_MODE_1SEC);
+        CCS811_MeasureMode = CCS811_ReadByte(MEAS_MODE_REG);
+        CCS811_MultiReadByte(ALG_RESULT_DATA, CCS811_BUF, 8);
+        CCS811_Information[0] = CCS811_ReadByte(HW_ID_REG); // Read CCS's information  ,ID
+        CCS811_Sleep();
+        //CCS.eco2 = (uint16_t)CCS811_BUF[0] * 256 + CCS811_BUF[1];
+        //CCS.tvoc = (uint16_t)CCS811_BUF[2] * 256 + CCS811_BUF[3];
+        //LCD_ShowNum(0, 0, CCS.eco2, 4);
+        //LCD_ShowNum(60, 0, CCS.tvoc, 4);
+        LCD_ShowNum(120, 0, CCS811_Information[0], 4);
+        // CCS811_Information[0] = 0;
+}

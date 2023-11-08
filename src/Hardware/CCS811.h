@@ -5,6 +5,16 @@
 #include "Delay.h"
 #include "I2C.h"
 
+typedef struct {
+    uint16_t eco2;
+    uint16_t tvoc;
+    uint8_t status;
+    uint8_t error_id;
+    uint16_t raw_data;
+} CCS811_DataTypeDef;
+
+extern CCS811_DataTypeDef CCS;
+
 #define CCS811_Wake()  do{GPIO_ResetBits(GPIOA,GPIO_Pin_8);Delay_ms(100);}while(0)
 #define CCS811_Sleep()  do{GPIO_SetBits(GPIOA,GPIO_Pin_8);Delay_ms(100);}while(0)
 

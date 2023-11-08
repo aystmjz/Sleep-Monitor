@@ -165,7 +165,7 @@ uint8_t Battery_calculate(uint16_t battery_ADC)
 	return batteryLevel;
 }
 
-uint8_t Update_BatteryLevel(uint16_t battery_ADC)
+uint8_t Battery_UpdateLevel(uint16_t battery_ADC)
 {
     static uint8_t batteryLevel_Last[5], batteryLevel_Init_Flag = 1, batteryLevel_Index = 0, lastBattery;
     uint16_t batteryLevel = 0;
@@ -189,7 +189,9 @@ uint8_t Update_BatteryLevel(uint16_t battery_ADC)
     return 0;
 }
 
-uint8_t Get_BatteryLevel()
+uint8_t Battery_GetLevel()
 {
     return Battery;
 }
+
+

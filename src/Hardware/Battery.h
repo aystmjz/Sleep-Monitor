@@ -7,7 +7,7 @@
 extern uint8_t Battery_Flag;
 
 uint8_t Battery_calculate(uint16_t Battery);
-uint8_t Update_BatteryLevel(uint16_t Battery_ADC);
-uint8_t Get_BatteryLevel();
+uint8_t Battery_UpdateLevel(uint16_t Battery_ADC);
+uint8_t Battery_GetLevel();
 
 #endif

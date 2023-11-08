@@ -58,7 +58,7 @@ uint8_t W25Q128_SPI_SwapByte(uint8_t ByteSend)
 }
 
 // spi1初始化
-void OLED_SPI_Init(void)
+void LCD_SPI_Init(void)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_SPI1, ENABLE);
 
@@ -81,10 +81,10 @@ void OLED_SPI_Init(void)
     SPI_InitStructure.SPI_CRCPolynomial     = 7;
     SPI_Init(SPI1, &SPI_InitStructure);
     SPI_Cmd(SPI1, ENABLE);
-    OLED_SPI_ReadWriteByte(0xff);
+    LCD_SPI_ReadWriteByte(0xff);
 }
 
-uint8_t OLED_SPI_ReadWriteByte(uint8_t TxData)
+uint8_t LCD_SPI_ReadWriteByte(uint8_t TxData)
 {
     uint8_t retry = 0;
     while (SPI_I2S_GetFlagStatus(SPI1, SPI_I2S_FLAG_TXE) == RESET)

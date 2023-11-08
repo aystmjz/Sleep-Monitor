@@ -5,8 +5,8 @@ const uint8_t RTC_ALARM1_ADDR[4]={0x07,0x08,0x09,0x0A};
 const uint8_t RTC_ALARM2_ADDR[3]={0x0B,0x0C,0x0D};
 uint8_t TIME[7] = {0, 0, 0x16, 0x1C, 0x06, 0x01, 0x17};//秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
 uint8_t Alarm_Date[2]={8,0};//闹钟时间
-uint8_t Alarm_Status=0;//闹钟状态
-uint8_t Alarm_Enable_Flag=0;//闹钟使能标志
+uint8_t Alarm_Status;//闹钟状态
+uint8_t Alarm_Enable_Flag;//闹钟使能标志
 
 
 void DS3231_WriteByte(uint8_t WordAddress,uint8_t Data)

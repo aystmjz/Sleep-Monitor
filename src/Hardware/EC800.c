@@ -2,7 +2,7 @@
 #include "EC800_Cacert.h"
 
 extern char  RxBuffer[100],RxCounter;
-extern MessageTypeDef Data;
+Environment_DataTypeDef Data;
 
 char Debug_str[100];
 
@@ -257,7 +257,7 @@ void MQTT_Init(void)
 	Clear_Buffer();
 }
 
-uint16_t Get_ADC()
+uint16_t EC800_GetADC()
 {
 	ATcmd_Make(1,"QADC","0");
 	if(!ATcmd_Wait("QADC","电池电压获取失败\r\n",1000,1))return 0;
@@ -267,7 +267,7 @@ uint16_t Get_ADC()
 
 
 
-void Pub_String(char* topic,char* str)
+void Pub_String(const char* topic,char* str)
 {
 	uint8_t json_len;
 	char len[5];
@@ -286,9 +286,28 @@ void Pub_String(char* topic,char* str)
 	if(timeout)Debug_printf("发布成功\r\n");
 }
 
-void Pub_Json(char* topic,cJSON* json)
+void Pub_Json(const char* topic,cJSON* json)
 {
 	char* str = cJSON_Print(json);
 	Pub_String(topic,str);
 	cJSON_free(str);
+}
+
+void Pub_Data(const char *topic)
+{
+    cJSON *Data_Json = NULL;
+    Data_Json        = cJSON_CreateObject();
+    cJSON_AddNumberToObject(Data_Json, "Temp", Data.Temp);
+    cJSON_AddNumberToObject(Data_Json, "Hum", Data.Hum);
+    cJSON_AddNumberToObject(Data_Json, "Light", Data.Light);
+    if (Data.Beep)
+        cJSON_AddTrueToObject(Data_Json, "Beep");
+    else
+        cJSON_AddFalseToObject(Data_Json, "Beep");
+    if (Data.Led)
+        cJSON_AddTrueToObject(Data_Json, "Led");
+    else
+        cJSON_AddFalseToObject(Data_Json, "Led");
+    Pub_Json(topic, Data_Json);
+    cJSON_Delete(Data_Json);
 }
