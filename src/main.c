@@ -17,6 +17,7 @@
 #include "CCS811.h"
 #include "MLX90640.h"
 #include "lcd.h"
+#include "remote.h"
 // #include "bmp.h"
 #include "LED.h"
 
@@ -144,7 +145,7 @@ void Battery_Refresh()
 // Debug_printf(str);
 
 int main(void)
-{
+{//while(1){}
     Delay_ms(100);
     Uart_Init(115200);
     Debug_printf("Debug_print OK\r\n");
@@ -158,22 +159,82 @@ int main(void)
     LCD_Init(); // 初始化TFT
     W25Q128_ReadUserData();
     LCD_Clear(WHITE); // 清屏
-    EC800_Init();
-    MQTT_Init();
+    //EC800_Init();
+    //MQTT_Init();
     MLX90640_SendInitCMD();
     TempPseColor_Init(GCM_Pseudo2);
     Show_PseColorBar(0, 0);
     Key_RefreshSelect();
     Debug_printf("InitOK!\r\n");
+
+
+u8 key=0;
+	u8 t=0;	
+ 	u8 *str=0;
+ Remote_Init();
+ 
+ 	POINT_COLOR=RED;		//设置字体为红色 
+	LCD_ShowString(30,50,"WarShip STM32");
+	LCD_ShowString(30,70,"REMOTE TEST");	
+	LCD_ShowString(30,90,"ATOM@ALIENTEK");
+	LCD_ShowString(30,110,"2015/1/15");
+ 
+   	LCD_ShowString(30,130,"KEYVAL:");	
+   	LCD_ShowString(30,150,"KEYCNT:");	
+   	LCD_ShowString(30,170,"SYMBOL:");	  		 	  		    							  
+	while(1)
+	{
+		key=Remote_Scan();	
+		if(key)
+		{	 
+			LCD_ShowNum(86,130,key,3);		//显示键值
+			LCD_ShowNum(86,150,RmtCnt,3);	//显示按键次数		  
+			switch(key)
+			{
+				case 0:str="ERROR";break;			   
+				case 162:str="POWER";break;	    
+				case 98:str="UP";break;	    
+				case 2:str="PLAY";break;		 
+				case 226:str="ALIENTEK";break;		  
+				case 194:str="RIGHT";break;	   
+				case 34:str="LEFT";break;		  
+				case 224:str="VOL-";break;		  
+				case 168:str="DOWN";break;		   
+				case 144:str="VOL+";break;		    
+				case 104:str="1";break;		  
+				case 152:str="2";break;	   
+				case 176:str="3";break;	    
+				case 48:str="4";break;		    
+				case 24:str="5";break;		    
+				case 122:str="6";break;		  
+				case 16:str="7";break;			   					
+				case 56:str="8";break;	 
+				case 90:str="9";break;
+				case 66:str="0";break;
+				case 82:str="DELETE";break;		 
+			}
+			LCD_Fill(86,170,116+8*8,170+16,WHITE);	//清楚之前的显示
+			LCD_ShowString(86,170,str);	//显示SYMBOL
+		}else Delay_ms(10);	  
+		t++;
+		if(t==20)
+		{
+			t=0;
+			//LED_Turn();
+		}
+	}
+
+    while (1) {Delay_ms(100);LED_Turn();}
+
     while (1) {
 
-        LED1_Turn();
+        LED_Turn();
         if (Key_Get()) Key_RefreshSelect();
         Encoder_Action(Encoder_Get());
 
         if (MLX90640_RefreshData()) {
             Show_TempRaw(8, 208);
-            Show_TempBilinearInter(0, BAR, &TempData);
+            Show_TempBilinearInter(0, BAR, & TempData);
         }
 
         if (Battery_Flag) Battery_Refresh();
@@ -191,11 +252,11 @@ int main(void)
     }
 }
 
-void TIM2_IRQHandler(void)
+void TIM3_IRQHandler(void)
 {
     static uint16_t key_Counter = 0, battery_Counter = 0, select_Counter = 0, pubDat_Counter = 0;
 
-    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET) {
+    if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET) {
         key_Counter++;
         battery_Counter++;
         pubDat_Counter++;
@@ -207,7 +268,7 @@ void TIM2_IRQHandler(void)
             key_Counter = 0;
             Key_Entry();
         }
-        if (battery_Counter >= 5000) {
+        if (battery_Counter >= 10000) {
             battery_Counter = 0;
             Battery_Flag    = 1;
         }
@@ -216,10 +277,10 @@ void TIM2_IRQHandler(void)
             Select_State     = 2;
             SelectReset_Flag = 1;
         }
-        if (pubDat_Counter >= 10000) {
+        if (pubDat_Counter >= 5000) {
             pubDat_Counter = 0;
             PubData_Flag   = 1;
         }
-        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
     }
 }
