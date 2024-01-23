@@ -184,11 +184,10 @@ u8 key=0;
    	LCD_ShowString(30,170,"SYMBOL:");	  		 	  		    							  
 	while(1)
 	{
-		key=Remote_Scan();	
-		if(key)
-		{	 
+		key=Remote_GetCommand();	
+		
 			LCD_ShowNum(86,130,key,3);		//显示键值
-			LCD_ShowNum(86,150,RmtCnt,3);	//显示按键次数		  
+			LCD_ShowNum(86,150,Remote_RepeatCounter,3);	//显示按键次数		  
 			switch(key)
 			{
 				case 0:str="ERROR";break;			   
@@ -212,10 +211,10 @@ u8 key=0;
 				case 90:str="9";break;
 				case 66:str="0";break;
 				case 82:str="DELETE";break;		 
-			}
+            }
 			LCD_Fill(86,170,116+8*8,170+16,WHITE);	//清楚之前的显示
 			LCD_ShowString(86,170,str);	//显示SYMBOL
-		}else Delay_ms(10);	  
+	 Delay_ms(200);	  
 		t++;
 		if(t==20)
 		{

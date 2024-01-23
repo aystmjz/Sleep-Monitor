@@ -1,16 +1,28 @@
 #ifndef __RED_H
-#define __RED_H 
-#include "sys.h" 
-#include "delay.h"
- 
-#define RDATA 	PAin(15)	 	//ºìÍâÊı¾İÊäÈë½Å
- 
-//ºìÍâÒ£¿ØÊ¶±ğÂë(ID),Ã¿¿îÒ£¿ØÆ÷µÄ¸ÃÖµ»ù±¾¶¼²»Ò»Ñù,µ«Ò²ÓĞÒ»ÑùµÄ.
-//ÎÒÃÇÑ¡ÓÃµÄÒ£¿ØÆ÷Ê¶±ğÂëÎª0
-#define REMOTE_ID 0      		   
- 
-extern u8 RmtCnt;			//°´¼ü°´ÏÂµÄ´ÎÊı
- 
-void Remote_Init(void);    	//ºìÍâ´«¸ĞÆ÷½ÓÊÕÍ·Òı½Å³õÊ¼»¯
-u8 Remote_Scan(void);	    
+#define __RED_H
+#include "stm32f10x.h" // Device header
+
+#define REST                  0 // ç©ºé—²çŠ¶æ€
+#define BEGIN                 1 // èµ·å§‹çŠ¶æ€
+#define RUN                   2 // è§£ç çŠ¶æ€
+
+#define HIGH_TIME             2250
+#define LOW_TIME              1120
+#define START_TIME            13500
+#define REPEAT_TIME           11250
+#define ERROR_TIME            500
+
+#define REMOTE_ADDRESS_LEN    16
+#define REMOTE_COMMAND_LEN    16
+
+#define REMOTE_ID_VERIFY      1
+#define REMOTE_ADDRESS_VERIFY 0
+#define REMOTE_COMMAND_VERIFY 0
+#define REMOTE_ID             2 // çº¢å¤–é¥æ§è¯†åˆ«ç (ID)
+
+extern uint8_t Remote_RepeatCounter; // æŒ‰é”®æŒ‰ä¸‹çš„æ¬¡æ•°
+
+void Remote_Init(void);
+uint16_t Remote_GetAddress(void);
+uint16_t Remote_GetCommand(void);
 #endif
