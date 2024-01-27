@@ -1,116 +1,158 @@
 #include "remote.h"
 
-// 0: ¿ÕÏÐ×´Ì¬
-// 1: ÆðÊ¼×´Ì¬
-// 2: ½âÂë×´Ì¬
-static uint8_t State      = 0;
-static uint8_t RepeatFlag = 0, DateIndex = 0, ReadyFlag = 0;
-static uint16_t Time;
-static uint16_t Address, Command;
-static uint8_t AddressData[REMOTE_ADDRESS_LEN - 1];
-static uint8_t CommandData[REMOTE_COMMAND_LEN - 1];
-uint8_t Remote_RepeatCounter = 0;
+static RemoteMethod Method; // å‘é€æ¨¡å¼
 
-// ºìÍâÒ£¿Ø³õÊ¼»¯ ÉèÖÃIOÒÔ¼°¶¨Ê±Æ÷2µÄÊäÈë²¶»ñ
-void Remote_Init(void)
+void Remote_PWMInit(void)
 {
-    // Ê¹ÄÜAFIOÊ±ÖÓ
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    // TIM2²¿·ÖÖØÓ³Éä
-    GPIO_PinRemapConfig(GPIO_PartialRemap1_TIM2, ENABLE);
+
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+
+    GPIO_InitTypeDef GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_6; // PA6 è¾“å‡º
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+    TIM_InternalClockConfig(TIM3);
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
+    TIM_TimeBaseInitStructure.TIM_ClockDivision     = TIM_CKD_DIV1;
+    TIM_TimeBaseInitStructure.TIM_CounterMode       = TIM_CounterMode_Up;
+    TIM_TimeBaseInitStructure.TIM_Period            = 2000 - 1;
+    TIM_TimeBaseInitStructure.TIM_Prescaler         = 72 - 1;
+    TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+    TIM_TimeBaseInit(TIM3, &TIM_TimeBaseInitStructure);
+
+    TIM_OCInitTypeDef TIM_OCInitStructure;
+    TIM_OCStructInit(&TIM_OCInitStructure);
+    TIM_OCInitStructure.TIM_OCMode      = TIM_OCMode_PWM1;
+    TIM_OCInitStructure.TIM_OCPolarity  = TIM_OCPolarity_High;
+    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+    TIM_OCInitStructure.TIM_Pulse       = 1000; // CCR
+
+    TIM_OC1Init(TIM3, &TIM_OCInitStructure);
+    TIM_Cmd(TIM3, ENABLE);
+}
+
+// çº¢å¤–é¥æŽ§åˆå§‹åŒ– è®¾ç½®IOä»¥åŠå®šæ—¶å™¨2çš„è¾“å…¥æ•èŽ·
+void Remote_Init(RemoteMethod method)
+{
+    Method = method;
+    // Remote_PWMInit();
+
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);  //  ä½¿èƒ½AFIOæ—¶é’Ÿ
+    GPIO_PinRemapConfig(GPIO_PartialRemap1_TIM2, ENABLE); // TIM2éƒ¨åˆ†é‡æ˜ å°„
 
     GPIO_InitTypeDef GPIO_InitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
     TIM_ICInitTypeDef TIM_ICInitStructure;
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE); // Ê¹ÄÜPORTBÊ±ÖÓ
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);  // TIM4 Ê±ÖÓÊ¹ÄÜ
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE); // ä½¿èƒ½PORTBæ—¶é’Ÿ
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);  // TIM2 æ—¶é’Ÿä½¿èƒ½
 
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;     // PA15 ÊäÈë
-    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_OD; // ÉÏÀ­ÊäÈë
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_15;     // PA15 è¾“å…¥
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_OD; // ä¸Šæ‹‰è¾“å…¥
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
     GPIO_SetBits(GPIOA, GPIO_Pin_15);
 
-    TIM_TimeBaseStructure.TIM_Period        = 20000;              // Éè¶¨¼ÆÊýÆ÷×Ô¶¯ÖØ×°Öµ ×î´ó10msÒç³ö
-    TIM_TimeBaseStructure.TIM_Prescaler     = (72 - 1);           // Ô¤·ÖÆµÆ÷,1MµÄ¼ÆÊýÆµÂÊ,1us¼Ó1.
-    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;       // ÉèÖÃÊ±ÖÓ·Ö¸î:TDTS = Tck_tim
-    TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up; // TIMÏòÉÏ¼ÆÊýÄ£Ê½
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_6; // PA6 è¾“å‡º
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_Out_PP;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_ResetBits(GPIOA, GPIO_Pin_6);
 
-    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure); // ¸ù¾ÝÖ¸¶¨µÄ²ÎÊý³õÊ¼»¯TIMx
+    TIM_TimeBaseStructure.TIM_Period        = 20000;              // è®¾å®šè®¡æ•°å™¨è‡ªåŠ¨é‡è£…å€¼ æœ€å¤§10msæº¢å‡º
+    TIM_TimeBaseStructure.TIM_Prescaler     = (72 - 1);           // é¢„åˆ†é¢‘å™¨,1Mçš„è®¡æ•°é¢‘çŽ‡,1usåŠ 1.
+    TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;       // è®¾ç½®æ—¶é’Ÿåˆ†å‰²:TDTS = Tck_tim
+    TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up; // TIMå‘ä¸Šè®¡æ•°æ¨¡å¼
 
-    TIM_ICInitStructure.TIM_Channel     = TIM_Channel_1;          // Ñ¡ÔñÊäÈë¶Ë IC1Ó³Éäµ½TI1ÉÏ
-    TIM_ICInitStructure.TIM_ICPolarity  = TIM_ICPolarity_Falling; // ÉÏÉýÑØ²¶»ñ
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure); // æ ¹æ®æŒ‡å®šçš„å‚æ•°åˆå§‹åŒ–TIMx
+
+    TIM_ICInitStructure.TIM_Channel     = TIM_Channel_1;          // é€‰æ‹©è¾“å…¥ç«¯ IC1æ˜ å°„åˆ°TI1ä¸Š
+    TIM_ICInitStructure.TIM_ICPolarity  = TIM_ICPolarity_Falling; // ä¸Šå‡æ²¿æ•èŽ·
     TIM_ICInitStructure.TIM_ICSelection = TIM_ICSelection_DirectTI;
-    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1; // ÅäÖÃÊäÈë·ÖÆµ,²»·ÖÆµ
-    TIM_ICInitStructure.TIM_ICFilter    = 0x03;           // IC1F=0011 ÅäÖÃÊäÈëÂË²¨Æ÷ 8¸ö¶¨Ê±Æ÷Ê±ÖÓÖÜÆÚÂË²¨
-    TIM_ICInit(TIM2, &TIM_ICInitStructure);               // ³õÊ¼»¯¶¨Ê±Æ÷ÊäÈë²¶»ñÍ¨µÀ
+    TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1; // é…ç½®è¾“å…¥åˆ†é¢‘,ä¸åˆ†é¢‘
+    TIM_ICInitStructure.TIM_ICFilter    = 0x03;           // IC1F=0011 é…ç½®è¾“å…¥æ»¤æ³¢å™¨ 8ä¸ªå®šæ—¶å™¨æ—¶é’Ÿå‘¨æœŸæ»¤æ³¢
+    TIM_ICInit(TIM2, &TIM_ICInitStructure);               // åˆå§‹åŒ–å®šæ—¶å™¨è¾“å…¥æ•èŽ·é€šé“
 
-    TIM_Cmd(TIM2, ENABLE); // Ê¹ÄÜ¶¨Ê±Æ÷2
+    TIM_Cmd(TIM2, ENABLE); // ä½¿èƒ½å®šæ—¶å™¨2
 
-    NVIC_InitStructure.NVIC_IRQChannel                   = TIM2_IRQn; // TIM2ÖÐ¶Ï
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;         // ÏÈÕ¼ÓÅÏÈ¼¶0¼¶
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 3;         // ´ÓÓÅÏÈ¼¶3¼¶
-    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;    // IRQÍ¨µÀ±»Ê¹ÄÜ
-    NVIC_Init(&NVIC_InitStructure);                                   // ¸ù¾ÝNVIC_InitStructÖÐÖ¸¶¨µÄ²ÎÊý³õÊ¼»¯ÍâÉèNVIC¼Ä´æÆ÷
+    NVIC_InitStructure.NVIC_IRQChannel                   = TIM2_IRQn; // TIM2ä¸­æ–­
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;         // å…ˆå ä¼˜å…ˆçº§0çº§
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority        = 3;         // ä»Žä¼˜å…ˆçº§3çº§
+    NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;    // IRQé€šé“è¢«ä½¿èƒ½
+    NVIC_Init(&NVIC_InitStructure);                                   // æ ¹æ®NVIC_InitStructä¸­æŒ‡å®šçš„å‚æ•°åˆå§‹åŒ–å¤–è®¾NVICå¯„å­˜å™¨
 
-    TIM_ITConfig(TIM2, TIM_IT_Update | TIM_IT_CC1, ENABLE); // ÔÊÐí¸üÐÂÖÐ¶Ï ,ÔÊÐíCC4IE²¶»ñÖÐ¶Ï
+    TIM_ITConfig(TIM2, TIM_IT_Update | TIM_IT_CC1, ENABLE); // å…è®¸æ›´æ–°ä¸­æ–­ ,å…è®¸CC4IEæ•èŽ·ä¸­æ–­
 }
 
-// ¶¨Ê±Æ÷2ÖÐ¶Ï·þÎñ³ÌÐò
+/*çº¢å¤–æŽ¥æ”¶*/
+// 0: ç©ºé—²çŠ¶æ€
+// 1: èµ·å§‹çŠ¶æ€
+// 2: è§£ç çŠ¶æ€
+static uint8_t State      = 0;
+static uint8_t RepeatFlag = 0, DateIndex = 0, ReadyFlag = 0;
+static uint16_t Time;
+static uint16_t Address, Command;
+static uint8_t AddressData[REMOTE_ADDRESS_LEN * 2 - 1];
+static uint8_t CommandData[REMOTE_COMMAND_LEN * 2 - 1];
+uint8_t Remote_RepeatCounter = 0;
+
+// å®šæ—¶å™¨2ä¸­æ–­æœåŠ¡ç¨‹åº
 void TIM2_IRQHandler(void)
 {
-    if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) // ¼ÆÊ±Æ÷¸üÐÂÖÐ¶Ï
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) != RESET) // è®¡æ—¶å™¨æ›´æ–°ä¸­æ–­
     {
         State = REST;
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
-    if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET) // ²¶»ñÏÂ½µÑØÖÐ¶Ï                                                ¶Ï
+    if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET) // æ•èŽ·ä¸‹é™æ²¿ä¸­æ–­                                                æ–­
     {
-        LED_Turn();
+        // LED_Turn();
         TIM_SetCounter(TIM2, 0);
-        switch (State) { // ×´Ì¬»ú
+        switch (State) { // çŠ¶æ€æœº
             case REST:
                 State = BEGIN;
                 break;
             case BEGIN:
                 Time = TIM_GetCapture1(TIM2);
-                if (Time > (START_TIME - ERROR_TIME) && Time < (START_TIME + ERROR_TIME)) { // Ê¶±ðÆðÊ¼ÐÅºÅ
+                if (Time > (START_TIME - ERROR_TIME) && Time < (START_TIME + ERROR_TIME)) { // è¯†åˆ«èµ·å§‹ä¿¡å·
                     State                = RUN;
                     DateIndex            = 0;
                     RepeatFlag           = 0;
                     Remote_RepeatCounter = 0;
-                } else if (RepeatFlag && Time > (REPEAT_TIME - ERROR_TIME) && Time < (REPEAT_TIME + ERROR_TIME)) { // Ê¶±ðÖØ¸´ÐÅºÅ
+                } else if (RepeatFlag && Time > (REPEAT_TIME - ERROR_TIME) && Time < (REPEAT_TIME + ERROR_TIME)) { // è¯†åˆ«é‡å¤ä¿¡å·
                     Remote_RepeatCounter++;
                     State = REST;
-                } else // ´íÎó´¦Àí
+                } else // é”™è¯¯å¤„ç†
                     State = REST;
                 break;
             case RUN:
                 Time      = TIM_GetCapture1(TIM2);
                 ReadyFlag = 0;
-                if (Time > (LOW_TIME - ERROR_TIME) && Time < (LOW_TIME + ERROR_TIME)) { // Ê¶±ðµÍµçÆ½
-                    if (DateIndex >= REMOTE_ADDRESS_LEN) {
-                        CommandData[DateIndex - REMOTE_ADDRESS_LEN] = 0;
+                if (Time > (ZERO_TIME - ERROR_TIME) && Time < (ZERO_TIME + ERROR_TIME)) { // è¯†åˆ«ä½Žç”µå¹³
+                    if (DateIndex >= (REMOTE_ADDRESS_LEN * 2)) {
+                        CommandData[DateIndex - (REMOTE_ADDRESS_LEN * 2)] = 0;
                         DateIndex++;
                     } else {
                         AddressData[DateIndex] = 0;
                         DateIndex++;
                     }
-                } else if (Time > (HIGH_TIME - ERROR_TIME) && Time < (HIGH_TIME + ERROR_TIME)) { // Ê¶±ð¸ßµçÆ½
-                    if (DateIndex >= REMOTE_ADDRESS_LEN) {
-                        CommandData[DateIndex - REMOTE_ADDRESS_LEN] = 1;
+                } else if (Time > (ONE_TIME - ERROR_TIME) && Time < (ONE_TIME + ERROR_TIME)) { // è¯†åˆ«é«˜ç”µå¹³
+                    if (DateIndex >= (REMOTE_ADDRESS_LEN * 2)) {
+                        CommandData[DateIndex - (REMOTE_ADDRESS_LEN * 2)] = 1;
                         DateIndex++;
                     } else {
                         AddressData[DateIndex] = 1;
                         DateIndex++;
                     }
-                } else { // ´íÎó´¦Àí
+                } else { // é”™è¯¯å¤„ç†
                     DateIndex = 0;
                     State     = REST;
                 }
-                if (DateIndex >= (REMOTE_ADDRESS_LEN + REMOTE_COMMAND_LEN)) { // ÍêÕû½ÓÊÕ
+                if (DateIndex >= ((REMOTE_ADDRESS_LEN + REMOTE_COMMAND_LEN) * 2)) { // å®Œæ•´æŽ¥æ”¶
                     DateIndex  = 0;
                     RepeatFlag = 1;
                     ReadyFlag  = 1;
@@ -126,17 +168,17 @@ uint8_t Remote_Verify(void)
 {
     uint16_t address = 0, in_address = 0;
     uint16_t command = 0, in_command = 0;
-    in_address |= 0xffff << (REMOTE_COMMAND_LEN / 2); // ²¹Î»
-    in_command |= 0xffff << (REMOTE_COMMAND_LEN / 2);
-    for (uint8_t i = 0; i < (REMOTE_ADDRESS_LEN / 2); i++) { // Êý¾Ý´¦Àí
+    in_address |= 0xffff << REMOTE_COMMAND_LEN; // è¡¥ä½
+    in_command |= 0xffff << REMOTE_COMMAND_LEN;
+    for (uint8_t i = 0; i < REMOTE_ADDRESS_LEN; i++) { // æ•°æ®å¤„ç†
         address |= AddressData[i] << i;
-        in_address |= AddressData[i + (REMOTE_ADDRESS_LEN / 2)] << i;
+        in_address |= AddressData[i + REMOTE_ADDRESS_LEN] << i;
     }
-    for (uint8_t i = 0; i < (REMOTE_COMMAND_LEN / 2); i++) {
+    for (uint8_t i = 0; i < REMOTE_COMMAND_LEN; i++) {
         command |= CommandData[i] << i;
-        in_command |= CommandData[i + (REMOTE_COMMAND_LEN / 2)] << i;
+        in_command |= CommandData[i + REMOTE_COMMAND_LEN] << i;
     }
-    if (REMOTE_ADDRESS_VERIFY && address != (uint16_t)~in_address) return 0; // Ð£Ñé
+    if (REMOTE_ADDRESS_VERIFY && address != (uint16_t)~in_address) return 0; // æ ¡éªŒ
     if (REMOTE_COMMAND_VERIFY && command != (uint16_t)~in_command) return 0;
     Address = address;
     Command = command;
@@ -150,12 +192,116 @@ uint16_t Remote_GetAddress(void)
 
 uint16_t Remote_GetCommand(void)
 {
-    if (ReadyFlag) { // ½ÓÊÕÍê³É
+    if (ReadyFlag) { // æŽ¥æ”¶å®Œæˆ
         ReadyFlag = 0;
-        if (Remote_Verify()) {                               // Êý¾Ý´¦ÀíÐ£Ñé
-            if (!(REMOTE_ID_VERIFY) || Address == REMOTE_ID) // Ò£¿ØÆ÷IDÐ£Ñé
+        if (Remote_Verify()) {                               // æ•°æ®å¤„ç†æ ¡éªŒ
+            if (!(REMOTE_ID_VERIFY) || Address == REMOTE_ID) // é¥æŽ§å™¨IDæ ¡éªŒ
                 return Command;
         }
     }
     return 0;
+}
+
+/*çº¢å¤–å‘é€*/
+
+// å‘é€38KHZè½½æ³¢
+void Remote_Send38KHZ(uint16_t time_us)
+{
+    for (uint16_t i = 0; i < time_us / 13 - 1; i++) { //-1å‡å°è¯¯å·®
+        REMOTE_PIN = !REMOTE_PIN;
+        Delay_us(13);
+    }
+}
+
+void Remote_SendStart(void)
+{
+    Remote_Send38KHZ(START_LOW_TIME - ERROR_TIME); // è½½æ³¢å»¶æ—¶æœ‰è¯¯å·®ï¼Œé‡‡ç”¨å®šæ—¶å™¨æ–¹æ¡ˆå¯ä»¥è§£å†³
+    REMOTE_PIN = 0;
+    Delay_us(START_HIGH_TIME - ERROR_TIME);
+}
+
+void Remote_SendEnd(void)
+{
+    Remote_Send38KHZ(ZERO_LOW_TIME);
+    REMOTE_PIN = 0;
+}
+
+void Remote_SendRepeat(void)
+{
+    Remote_Send38KHZ(REPEAT_LOW_TIME);
+    REMOTE_PIN = 0;
+    Delay_us(REPEAT_HIGH_TIME);
+    Remote_SendEnd();
+}
+
+void Remote_SendZero(void)
+{
+    Remote_Send38KHZ(ONE_LOW_TIME);
+    REMOTE_PIN = 0;
+    Delay_us(ONE_HIGH_TIME);
+}
+
+void Remote_SendOne(void)
+{
+    Remote_Send38KHZ(ZERO_LOW_TIME);
+    REMOTE_PIN = 0;
+    Delay_us(ZERO_HIGH_TIME);
+}
+
+void Remote_Transmit(uint16_t address, uint16_t command)
+{
+    uint16_t in_address = address;
+    uint16_t in_command = command;
+    switch (Method) {
+        case REMOTE_Common_Verify:
+            in_address = ~address;
+            in_command = ~command; // æ— break
+
+        case REMOTE_Repeat_Verify:
+            Remote_SendStart();
+            for (uint8_t i = 0; i < REMOTE_ADDRESS_LEN; i++) {
+                if (address & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+            for (uint8_t i = 0; i < REMOTE_ADDRESS_LEN; i++) {
+                if (in_address & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+            for (uint8_t i = 0; i < REMOTE_COMMAND_LEN; i++) {
+                if (command & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+            for (uint8_t i = 0; i < REMOTE_COMMAND_LEN; i++) {
+                if (in_command & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+            Remote_SendEnd();
+            break;
+        case REMOTE_No_Verify:
+            Remote_SendStart();
+            for (uint8_t i = 0; i < REMOTE_ADDRESS_LEN; i++) {
+                if (address & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+
+            for (uint8_t i = 0; i < REMOTE_COMMAND_LEN; i++) {
+                if (command & (0x0001 << i))
+                    Remote_SendOne();
+                else
+                    Remote_SendZero();
+            }
+
+            Remote_SendEnd();
+            break;
+    }
 }
