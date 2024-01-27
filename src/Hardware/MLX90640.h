@@ -7,6 +7,7 @@
 #include "lcd.h"
 
 extern const char *MQTT_Topic;
+extern uint8_t FPS_MLX90640;
 
 #define abs(x)    ((x) > 0 ? (x) : -(x))
 

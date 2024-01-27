@@ -253,6 +253,11 @@ void Show_Text(uint8_t n)
         LCD_MDA_ShowString(48, ".", mode);
         LCD_MDA_ShowNum(56, (TempData.Max % 100) / 10, 1, mode);
         LCD_MDA_ShowSymbol(64, TempSymbol, mode);
+
+        LCD_MDA_ShowString(96, "FPS ", mode);
+        LCD_MDA_ShowNum(128, FPS_MLX90640, 2, mode);
+        //LCD_MDA_ShowNum(144, Remote_GetCommand(), 2, mode);
+
         LCD_MDA_ShowString(160, "MIN=", mode);
         LCD_MDA_ShowNum(192, TempData.Min / 100, 2, mode);
         LCD_MDA_ShowString(208, ".", mode);

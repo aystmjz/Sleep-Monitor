@@ -29,6 +29,9 @@ uint8_t PubData_Flag;
 uint8_t Select_State = 2;
 uint8_t Method       = 1;
 
+uint8_t FPS_MLX90640         = 0;
+uint8_t FPS_MLX90640_Counter = 0;
+
 const uint8_t Method_Index[MethodNUM][3] = {{7, 8, 1}, {7, 8, 2}, {9, 10, 1}, {9, 10, 2}, {8, 11, 1}, {8, 11, 2}, {8, 11, 3}, {12, 13, 0}};
 
 void MLX90640_RefreshMethod(ConverMethod method, uint16_t color)
@@ -100,6 +103,7 @@ void Encoder_Action(int16_t num)
 {
     static int16_t lastNum;
     if (num != lastNum) {
+        Remote_Transmit(REMOTE_ID,0x05);
         EncoderRun_Flag = 1;
         switch (Select_State) {
             case 1:
@@ -143,9 +147,10 @@ void Battery_Refresh()
 
 // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
 // Debug_printf(str);
-
+uint16_t Key;
 int main(void)
-{//while(1){}
+{ 
+    
     Delay_ms(100);
     Uart_Init(115200);
     Debug_printf("Debug_print OK\r\n");
@@ -159,81 +164,30 @@ int main(void)
     LCD_Init(); // 初始化TFT
     W25Q128_ReadUserData();
     LCD_Clear(WHITE); // 清屏
-    //EC800_Init();
-    //MQTT_Init();
+    // EC800_Init();
+    // MQTT_Init();
     MLX90640_SendInitCMD();
     TempPseColor_Init(GCM_Pseudo2);
     Show_PseColorBar(0, 0);
     Key_RefreshSelect();
     Debug_printf("InitOK!\r\n");
-
-
-u8 key=0;
-	u8 t=0;	
- 	u8 *str=0;
- Remote_Init();
- 
- 	POINT_COLOR=RED;		//设置字体为红色 
-	LCD_ShowString(30,50,"WarShip STM32");
-	LCD_ShowString(30,70,"REMOTE TEST");	
-	LCD_ShowString(30,90,"ATOM@ALIENTEK");
-	LCD_ShowString(30,110,"2015/1/15");
- 
-   	LCD_ShowString(30,130,"KEYVAL:");	
-   	LCD_ShowString(30,150,"KEYCNT:");	
-   	LCD_ShowString(30,170,"SYMBOL:");	  		 	  		    							  
-	while(1)
-	{
-		key=Remote_GetCommand();	
-		
-			LCD_ShowNum(86,130,key,3);		//显示键值
-			LCD_ShowNum(86,150,Remote_RepeatCounter,3);	//显示按键次数		  
-			switch(key)
-			{
-				case 0:str="ERROR";break;			   
-				case 162:str="POWER";break;	    
-				case 98:str="UP";break;	    
-				case 2:str="PLAY";break;		 
-				case 226:str="ALIENTEK";break;		  
-				case 194:str="RIGHT";break;	   
-				case 34:str="LEFT";break;		  
-				case 224:str="VOL-";break;		  
-				case 168:str="DOWN";break;		   
-				case 144:str="VOL+";break;		    
-				case 104:str="1";break;		  
-				case 152:str="2";break;	   
-				case 176:str="3";break;	    
-				case 48:str="4";break;		    
-				case 24:str="5";break;		    
-				case 122:str="6";break;		  
-				case 16:str="7";break;			   					
-				case 56:str="8";break;	 
-				case 90:str="9";break;
-				case 66:str="0";break;
-				case 82:str="DELETE";break;		 
-            }
-			LCD_Fill(86,170,116+8*8,170+16,WHITE);	//清楚之前的显示
-			LCD_ShowString(86,170,str);	//显示SYMBOL
-	 Delay_ms(200);	  
-		t++;
-		if(t==20)
-		{
-			t=0;
-			//LED_Turn();
-		}
-	}
-
-    while (1) {Delay_ms(100);LED_Turn();}
+    Remote_Init(REMOTE_Common_Verify);
 
     while (1) {
 
         LED_Turn();
+        TIM_Cmd(TIM3, ENABLE);
         if (Key_Get()) Key_RefreshSelect();
+
+        Key = Remote_GetCommand();
+        if (Key) {Encoder_Set(Key);}
+
         Encoder_Action(Encoder_Get());
 
         if (MLX90640_RefreshData()) {
             Show_TempRaw(8, 208);
-            Show_TempBilinearInter(0, BAR, & TempData);
+            Show_TempBilinearInter(0, BAR, &TempData);
+            FPS_MLX90640_Counter++;
         }
 
         if (Battery_Flag) Battery_Refresh();
@@ -246,19 +200,20 @@ u8 key=0;
         if (PubData_Flag) {
             PubData_Flag = 0;
             Data.Temp    = TempData.Target / 100;
-            Pub_Data(MQTT_Topic);
+            // Pub_Data(MQTT_Topic);
         }
     }
 }
 
-void TIM3_IRQHandler(void)
+void TIM1_UP_IRQHandler(void)
 {
     static uint16_t key_Counter = 0, battery_Counter = 0, select_Counter = 0, pubDat_Counter = 0;
-
-    if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET) {
+    static uint16_t fps_MLX90640_Counter = 0;
+    if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET) {
         key_Counter++;
         battery_Counter++;
         pubDat_Counter++;
+        fps_MLX90640_Counter++;
         if (Select_State && !EncoderRun_Flag)
             select_Counter++;
         else
@@ -280,6 +235,11 @@ void TIM3_IRQHandler(void)
             pubDat_Counter = 0;
             PubData_Flag   = 1;
         }
-        TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+        if (fps_MLX90640_Counter >= 1000) {
+            fps_MLX90640_Counter = 0;
+            FPS_MLX90640         = FPS_MLX90640_Counter;
+            FPS_MLX90640_Counter = 0;
+        }
+        TIM_ClearITPendingBit(TIM1, TIM_IT_Update);
     }
 }
