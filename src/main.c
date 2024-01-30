@@ -20,6 +20,7 @@
 #include "remote.h"
 // #include "bmp.h"
 #include "LED.h"
+#include <time.h>
 
 char str[100];
 
@@ -50,20 +51,22 @@ void MLX90640_RefreshMethod(ConverMethod method, uint16_t color)
 
 uint8_t W25Q128_UserData[2]; // 发射率，显示方式
 
+#define USER_DATA_ADDERSS 0xFF0000
+
 void W25Q128_ReadUserData()
 {
-    W25Q128_ReadData(0x000000, W25Q128_UserData, 2);
+    W25Q128_ReadData(USER_DATA_ADDERSS, W25Q128_UserData, 2);
     Method     = W25Q128_UserData[0];
     Emissivity = W25Q128_UserData[1];
 }
 
 void W25Q128_WriteUserData()
 {
-    W25Q128_SectorErase(0x000000);
+    W25Q128_SectorErase(USER_DATA_ADDERSS);
     Delay_ms(20);
     W25Q128_UserData[0] = Method;
     W25Q128_UserData[1] = Emissivity;
-    W25Q128_PageProgram(0x000000, W25Q128_UserData, 2);
+    W25Q128_PageProgram(USER_DATA_ADDERSS, W25Q128_UserData, 2);
 }
 
 void Key_RefreshSelect()
@@ -103,7 +106,6 @@ void Encoder_Action(int16_t num)
 {
     static int16_t lastNum;
     if (num != lastNum) {
-        Remote_Transmit(REMOTE_ID,0x05);
         EncoderRun_Flag = 1;
         switch (Select_State) {
             case 1:
@@ -147,10 +149,15 @@ void Battery_Refresh()
 
 // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
 // Debug_printf(str);
+
+char *Time_Str;
+char s[20];
 uint16_t Key;
+
+
 int main(void)
-{ 
-    
+{
+
     Delay_ms(100);
     Uart_Init(115200);
     Debug_printf("Debug_print OK\r\n");
@@ -172,15 +179,60 @@ int main(void)
     Key_RefreshSelect();
     Debug_printf("InitOK!\r\n");
     Remote_Init(REMOTE_Common_Verify);
+    DS3231_Init();
+    while (1)
+    {
+
+
+LCD_ShowNum(40, 40,Time_Year,3);
+LCD_ShowNum(80, 40,Time_Mon,3);
+LCD_ShowNum(120, 40,Time_Day,3);
+
+LCD_ShowNum(40, 60,Time_Week,3);
+
+LCD_ShowNum(40, 80,Time_Hour,3);
+LCD_ShowNum(80, 80,Time_Min,3);
+LCD_ShowNum(120, 80,Time_Sec,3);
+DS3231_ReadTime();
+
+
+Time_Str=asctime(&Time_Date);
+LCD_ShowString(20,100,Time_Str);
+
+time_t time_cnt=DS3231_GetTimeStamp();
+Time_Str=ctime(&time_cnt);
+LCD_ShowString(20,120,Time_Str);
+
+sprintf(s,"%d",DS3231_GetTimeStamp());
+LCD_ShowString(20,140,s);
+
+
+Delay_ms(300);
+    }
+//秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
+while (1)
+{
+            if (Key_Get()) {
+            Remote_Transmit(REMOTE_ID,123);
+        }
+        LCD_ShowString(30, 20,"Command");
+        LCD_ShowNum(40, 40,Remote_GetCommand(),3);
+        Delay_ms(300);
+
+}
+
 
     while (1) {
 
         LED_Turn();
         TIM_Cmd(TIM3, ENABLE);
-        if (Key_Get()) Key_RefreshSelect();
+        if (Key_Get()) {
+            Key_RefreshSelect();
+            Delay_ms(300);
+        }
 
         Key = Remote_GetCommand();
-        if (Key) {Encoder_Set(Key);}
+        if (Key) { Encoder_Set(Key); }
 
         Encoder_Action(Encoder_Get());
 
@@ -218,24 +270,24 @@ void TIM1_UP_IRQHandler(void)
             select_Counter++;
         else
             select_Counter = 0;
-        if (key_Counter >= 50) {
+        if (key_Counter >= 5) {
             key_Counter = 0;
             Key_Entry();
         }
-        if (battery_Counter >= 10000) {
+        if (battery_Counter >= 1000) {
             battery_Counter = 0;
             Battery_Flag    = 1;
         }
-        if (select_Counter >= 5000) {
+        if (select_Counter >= 500) {
             select_Counter   = 0;
             Select_State     = 2;
             SelectReset_Flag = 1;
         }
-        if (pubDat_Counter >= 5000) {
+        if (pubDat_Counter >= 500) {
             pubDat_Counter = 0;
             PubData_Flag   = 1;
         }
-        if (fps_MLX90640_Counter >= 1000) {
+        if (fps_MLX90640_Counter >= 100) {
             fps_MLX90640_Counter = 0;
             FPS_MLX90640         = FPS_MLX90640_Counter;
             FPS_MLX90640_Counter = 0;
