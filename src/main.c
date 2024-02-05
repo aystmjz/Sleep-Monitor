@@ -154,6 +154,38 @@ char *Time_Str;
 char s[20];
 uint16_t Key;
 
+void Up_Data()
+{
+    static uint8_t block_index;
+    if (!IsTime()) return; // 是否到了上传数据的时间
+    block_index = W25Q128_GetNewestBlock();
+    if (!IsSameDay(W25Q128_GetBlockTimeStamp(block_index), DS3231_GetTimeStamp())) {
+        block_index++;
+        W25Q128_BlockErase((uint32_t)block_index << 16); // 新块则清除内存
+        W25Q128_WriteBlockTimeStamp((uint32_t)block_index << 16, DS3231_GetTimeStamp());
+    }
+    LED_Turn();
+
+    uint8_t data[16];
+    data[0]  = DATA1;
+    data[1]  = DATA2;
+    data[2]  = DATA3;
+    data[3]  = DATA_NULL;
+    data[4]  = DATA_NULL;
+    data[5]  = DATA_NULL;
+    data[6]  = DATA_NULL;
+    data[7]  = DATA_NULL;
+    data[8]  = DATA_NULL;
+    data[9]  = DATA_NULL;
+    data[10] = DATA_NULL;
+    data[11] = DATA_NULL;
+    data[12] = DATA_NULL;
+    data[13] = DATA_NULL;
+    data[14] = DATA_NULL;
+    data[15] = DATA_NULL;
+    // 上传数据
+    W25Q128_PageProgram(((uint32_t)block_index << 16) | TimeDate_ToAddress(Time_Hour, Time_Min, Time_Sec), data, DATA_LEN);
+}
 
 int main(void)
 {
@@ -180,7 +212,7 @@ int main(void)
     Debug_printf("InitOK!\r\n");
     Remote_Init(REMOTE_Common_Verify);
     DS3231_Init();
-    while (1)
+    /*while (1)
     {
 
 
@@ -220,8 +252,40 @@ while (1)
         Delay_ms(300);
 
 }
+*/
+    // uint32_t time_cnt=DS3231_GetTimeStamp();
+    // uint8_t temp[4];
+    // temp[3]=(time_cnt>>24)&0xff;
+    // temp[2]=(time_cnt>>16)&0xff;
+    // temp[1]=(time_cnt>>8)&0xff;
+    // temp[0]=(time_cnt)&0xff;
 
+    // // temp[3]=0x1f;
+    // // temp[2]=0x4f;
+    // // temp[1]=0x3f;
+    // // temp[0]=0x4f;
+    // W25Q128_SectorErase(0x050000);
+    // //W25Q128_PageProgram(0x000000, temp, 4);
+    // W25Q128_PageProgram(0x050000, temp, 4);
 
+    W25Q128_SectorErase(0x050000);
+    W25Q128_WriteBlockTimeStamp(0x050000, DS3231_GetTimeStamp());
+
+    uint8_t num, abc = 0;
+    while (1) {
+        DS3231_ReadTime();
+        Up_Data();
+        num = W25Q128_GetNewestBlock();
+        LCD_ShowNum(40, 40, num, 2);
+        sprintf(s, "%d", W25Q128_GetBlockTimeStamp(num));
+        LCD_ShowNum(40, 60, abc, 3);
+        LCD_ShowString(40, 80, s);
+        if (IsSameDay(DS3231_GetTimeStamp(), W25Q128_GetBlockTimeStamp(num) + 100000)) LCD_ShowNum(140, 80, W25Q128_GetBlockTimeStamp(num), 6);
+        Delay_ms(100);
+        abc++;
+        if (abc > 240) abc = 1;
+        // LED_Turn();
+    }
     while (1) {
 
         LED_Turn();
