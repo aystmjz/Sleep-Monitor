@@ -269,7 +269,6 @@ void LCD_Fill(u16 xsta, u16 ysta, u16 xend, u16 yend, u16 color)
     }
 }
 
-
 /// @brief 画线
 /// @param x1,y1 起点坐标
 /// @param x2,y2 终点坐标
@@ -321,12 +320,28 @@ void LCD_DrawLine(u16 x1, u16 y1, u16 x2, u16 y2)
 // 画矩形
 void LCD_DrawRectangle(u16 x1, u16 y1, u16 x2, u16 y2)
 {
-    LCD_DrawLine(x1, y1, x2, y1);
-    LCD_DrawLine(x1, y1, x1, y2);
-    LCD_DrawLine(x1, y2, x2, y2);
-    LCD_DrawLine(x2, y1, x2, y2);
-}
+    if(x2<x1)x2=x1;
+    if(y2<y1)y2=y1;
+    if(x1>=SCREEN)x1=SCREEN-2;//矩形左右限制
+    if(x2>=SCREEN)x2=SCREEN-2;
+    LCD_SetAddress(x1, y1, x2, y1);
+    for (uint8_t i = 0; i < (x2-x1); i++) {
+        LCD_WriteDATA(POINT_COLOR);
+    }
+    LCD_SetAddress(x1, y1, x1, y2);
+    for (uint8_t i = 0; i < (y2-y1); i++) {
+        LCD_WriteDATA(POINT_COLOR);
+    }
+    LCD_SetAddress(x1, y2, x2, y2);
+    for (uint8_t i = 0; i < (x2-x1); i++) {
+        LCD_WriteDATA(POINT_COLOR);
+    }
+    LCD_SetAddress(x2, y1, x2, y2);
+    for (uint8_t i = 0; i < (y2-y1); i++) {
+        LCD_WriteDATA(POINT_COLOR);
+    }
 
+}
 
 /// @brief 在指定位置画一个指定大小的圆
 /// @param x,y 中心点
@@ -514,6 +529,22 @@ void LCD_ShowString(u16 x, u16 y, const u8 *p)
         LCD_ShowChar(x, y, *p, REFRESH_MODE);
         x += 8;
         p++;
+    }
+}
+
+#define Image_X 132
+#define Image_Y 150
+#define Image_L 50
+
+const unsigned char gImage_qmx[1];
+
+void showimage() // 显示40*40图片
+{
+
+    LCD_SetAddress(Image_L, Image_L, Image_L + Image_X - 1, Image_L + Image_Y - 1); // 坐标设置
+    for (int i = 0; i < 39600 / 2; i++) {
+        LCD_WriteByte(gImage_qmx[i * 2 + 1]);
+        LCD_WriteByte(gImage_qmx[i * 2]);
     }
 }
 

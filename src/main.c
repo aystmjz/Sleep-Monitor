@@ -21,6 +21,9 @@
 // #include "bmp.h"
 #include "LED.h"
 #include <time.h>
+#include "OLED.h"
+#include "Menu.h"
+
 
 char str[100];
 
@@ -187,9 +190,11 @@ void Up_Data()
     W25Q128_PageProgram(((uint32_t)block_index << 16) | TimeDate_ToAddress(Time_Hour, Time_Min, Time_Sec), data, DATA_LEN);
 }
 
+
 int main(void)
 {
 
+	
     Delay_ms(100);
     Uart_Init(115200);
     Debug_printf("Debug_print OK\r\n");
@@ -201,20 +206,85 @@ int main(void)
     // DS3231_Init();
     // CCS811_Init();
     LCD_Init(); // 初始化TFT
-    W25Q128_ReadUserData();
     LCD_Clear(WHITE); // 清屏
     // EC800_Init();
     // MQTT_Init();
-    MLX90640_SendInitCMD();
-    TempPseColor_Init(GCM_Pseudo2);
-    Show_PseColorBar(0, 0);
-    Key_RefreshSelect();
     Debug_printf("InitOK!\r\n");
     Remote_Init(REMOTE_Common_Verify);
     DS3231_Init();
-    /*while (1)
+while (1)
+{
+    switch (GlobalState)
     {
+    case -1:
+LCD_Clear(WHITE);
+GlobalState=0;
+    break;
+    case 0:
+        OLED_Clear();
 
+if((!Menu_Global.isRun)&&Menu_StartMenu.isInit&&Menu_EnterEvent())
+		{
+			Menu_Global.isRun=1;
+			Menu_RunMainMenu();
+		}
+
+		if(!Menu_StartMenu.isInit)
+		Menu_RunMainMenu();
+		else Menu_Global.isRun=0;
+
+		if(!GlobalState)OLED_Update();
+        break;
+    case 1:
+        W25Q128_ReadUserData();
+        MLX90640_SendInitCMD();
+        TempPseColor_Init(GCM_Pseudo2);
+        Show_PseColorBar(0, 0);
+        Key_RefreshSelect();
+        GlobalState=2;
+        break;
+    case 2:
+        LED_Turn();
+        TIM_Cmd(TIM3, ENABLE);
+        if (Key_Get()) {
+            GlobalState=-1;
+            //Key_RefreshSelect();
+            Delay_ms(300);
+        }
+
+        Key = Remote_GetCommand();
+        if (Key) { Encoder_Set(Key); }
+
+        Encoder_Action(Encoder_GetCounter());
+
+        if (MLX90640_RefreshData()) {
+            Show_TempRaw(8, 208);
+            Show_TempBilinearInter(0, BAR, &TempData);
+            FPS_MLX90640_Counter++;
+        }
+
+        if (Battery_Flag) Battery_Refresh();
+
+        if (SelectReset_Flag) {
+            SelectReset_Flag = 0;
+            Key_RefreshSelect();
+        }
+
+        if (PubData_Flag) {
+            PubData_Flag = 0;
+            Data.Temp    = TempData.Target / 100;
+            // Pub_Data(MQTT_Topic);
+        }
+        break;
+    }
+}
+    
+
+
+
+    while (1)
+    {
+LED_Turn();
 
 LCD_ShowNum(40, 40,Time_Year,3);
 LCD_ShowNum(80, 40,Time_Mon,3);
@@ -240,6 +310,10 @@ LCD_ShowString(20,140,s);
 
 
 Delay_ms(300);
+
+
+
+
     }
 //秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
 while (1)
@@ -252,7 +326,7 @@ while (1)
         Delay_ms(300);
 
 }
-*/
+
     // uint32_t time_cnt=DS3231_GetTimeStamp();
     // uint8_t temp[4];
     // temp[3]=(time_cnt>>24)&0xff;
@@ -272,53 +346,21 @@ while (1)
     W25Q128_WriteBlockTimeStamp(0x050000, DS3231_GetTimeStamp());
 
     uint8_t num, abc = 0;
-    while (1) {
-        DS3231_ReadTime();
-        Up_Data();
-        num = W25Q128_GetNewestBlock();
-        LCD_ShowNum(40, 40, num, 2);
-        sprintf(s, "%d", W25Q128_GetBlockTimeStamp(num));
-        LCD_ShowNum(40, 60, abc, 3);
-        LCD_ShowString(40, 80, s);
-        if (IsSameDay(DS3231_GetTimeStamp(), W25Q128_GetBlockTimeStamp(num) + 100000)) LCD_ShowNum(140, 80, W25Q128_GetBlockTimeStamp(num), 6);
-        Delay_ms(100);
-        abc++;
-        if (abc > 240) abc = 1;
-        // LED_Turn();
-    }
-    while (1) {
+    // while (1) {
+    //     DS3231_ReadTime();
+    //     Up_Data();
+    //     num = W25Q128_GetNewestBlock();
+    //     LCD_ShowNum(40, 40, num, 2);
+    //     sprintf(s, "%d", W25Q128_GetBlockTimeStamp(num));
+    //     LCD_ShowNum(40, 60, abc, 3);
+    //     LCD_ShowString(40, 80, s);
+    //     if (IsSameDay(DS3231_GetTimeStamp(), W25Q128_GetBlockTimeStamp(num) + 100000)) LCD_ShowNum(140, 80, W25Q128_GetBlockTimeStamp(num), 6);
+    //     Delay_ms(100);
+    //     abc++;
+    //     if (abc > 240) abc = 1;
+    //     // LED_Turn();
+    // }
 
-        LED_Turn();
-        TIM_Cmd(TIM3, ENABLE);
-        if (Key_Get()) {
-            Key_RefreshSelect();
-            Delay_ms(300);
-        }
-
-        Key = Remote_GetCommand();
-        if (Key) { Encoder_Set(Key); }
-
-        Encoder_Action(Encoder_Get());
-
-        if (MLX90640_RefreshData()) {
-            Show_TempRaw(8, 208);
-            Show_TempBilinearInter(0, BAR, &TempData);
-            FPS_MLX90640_Counter++;
-        }
-
-        if (Battery_Flag) Battery_Refresh();
-
-        if (SelectReset_Flag) {
-            SelectReset_Flag = 0;
-            Key_RefreshSelect();
-        }
-
-        if (PubData_Flag) {
-            PubData_Flag = 0;
-            Data.Temp    = TempData.Target / 100;
-            // Pub_Data(MQTT_Topic);
-        }
-    }
 }
 
 void TIM1_UP_IRQHandler(void)

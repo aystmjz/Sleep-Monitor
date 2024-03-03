@@ -29,7 +29,7 @@
 
 #define DC                 PAout(4) // DC
 
-#define LCD_SEND_BUFF_LEN 6000
+#define LCD_SEND_BUFF_LEN 3841
 
 // LCD模式设置
 // 0:4线串行模式
