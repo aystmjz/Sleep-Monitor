@@ -4,7 +4,7 @@
 #include "math.h"
 #include "stdio.h"
 #include "stm32f10x_flash.h"
-#include "stdlib.h"
+
 #include "string.h"
 #include "wdg.h"
 #include "EC800.h"
@@ -23,7 +23,6 @@
 #include <time.h>
 #include "OLED.h"
 #include "Menu.h"
-
 
 char str[100];
 
@@ -155,7 +154,6 @@ void Battery_Refresh()
 
 char *Time_Str;
 char s[20];
-uint16_t Key;
 
 void Up_Data()
 {
@@ -189,12 +187,40 @@ void Up_Data()
     // 上传数据
     W25Q128_PageProgram(((uint32_t)block_index << 16) | TimeDate_ToAddress(Time_Hour, Time_Min, Time_Sec), data, DATA_LEN);
 }
+extern uint8_t AddressData[16];
+extern uint8_t CommandData[16];
 
+char st[100];
+
+// #define CCS811_Add  0x5A<<1
+// #define STATUS_REG 0x00
+// #define MEAS_MODE_REG 0x01
+// #define ALG_RESULT_DATA 0x02
+// #define ENV_DATA 0x05
+// #define NTC_REG 0x06
+// #define THRESHOLDS 0x10
+// #define BASELINE 0x11
+// #define HW_ID_REG 0x20
+// #define ERROR_ID_REG 0xE0
+// #define APP_START_REG 0xF4
+// #define SW_RESET 0xFF
+// #define CCS_811_ADDRESS 0x5A
+// #define GPIO_WAKE 0x5
+// #define DRIVE_MODE_IDLE 0x0
+// #define DRIVE_MODE_1SEC 0x10
+// #define DRIVE_MODE_10SEC 0x20
+// #define DRIVE_MODE_60SEC 0x30
+// #define INTERRUPT_DRIVEN 0x8
+// #define THRESHOLDS_ENABLED 0x4
+
+// u8 BUF[12];
+// u8 Information[10];
+// u8 temp=0x5a;
+// u8 MeasureMode,Status,Error_ID;
 
 int main(void)
 {
 
-	
     Delay_ms(100);
     Uart_Init(115200);
     Debug_printf("Debug_print OK\r\n");
@@ -204,129 +230,191 @@ int main(void)
     Key_Init();
     W25Q128_Init();
     // DS3231_Init();
-    // CCS811_Init();
-    LCD_Init(); // 初始化TFT
+    CCS811_Init();
+    LCD_Init();       // 初始化TFT
     LCD_Clear(WHITE); // 清屏
     // EC800_Init();
     // MQTT_Init();
     Debug_printf("InitOK!\r\n");
-    Remote_Init(REMOTE_Common_Verify);
     DS3231_Init();
-while (1)
-{
-    switch (GlobalState)
-    {
-    case -1:
-LCD_Clear(WHITE);
-GlobalState=0;
-    break;
-    case 0:
-        OLED_Clear();
+    Remote_Init(REMOTE_Common_Verify);
+    BACK_COLOR = WHITE;
+    CCS811_SetMeasurementMode(DRIVE_MODE_1SEC);
 
-if((!Menu_Global.isRun)&&Menu_StartMenu.isInit&&Menu_EnterEvent())
-		{
-			Menu_Global.isRun=1;
-			Menu_RunMainMenu();
-		}
+    while (1) {
+        Delay_ms(2000);
+        if (CCS811_GetData()) {
+            sprintf(st, "eco2=%d  tvoc=%d\r\n", CCS.eco2, CCS.tvoc);
+            Debug_printf(st);
+        }
+    }
 
-		if(!Menu_StartMenu.isInit)
-		Menu_RunMainMenu();
-		else Menu_Global.isRun=0;
-
-		if(!GlobalState)OLED_Update();
-        break;
-    case 1:
-        W25Q128_ReadUserData();
-        MLX90640_SendInitCMD();
-        TempPseColor_Init(GCM_Pseudo2);
-        Show_PseColorBar(0, 0);
-        Key_RefreshSelect();
-        GlobalState=2;
-        break;
-    case 2:
-        LED_Turn();
-        TIM_Cmd(TIM3, ENABLE);
+    /*
+    while (1) {
+        int8_t a=Encoder_Get_Div4();
+        if (a<0) {
+            Remote_Transmit(REMOTE_ID, 24);
+        }
+        if (a>0) {
+            Remote_Transmit(REMOTE_ID, 25);
+        }
         if (Key_Get()) {
-            GlobalState=-1;
-            //Key_RefreshSelect();
-            Delay_ms(300);
+            Remote_Transmit(REMOTE_ID, 64);
         }
+        LCD_ShowString(30, 20, "Command");
+        LCD_ShowNum(40, 40, Remote_GetCommand(), 5);
+        LCD_ShowNum(40, 60, Remote_GetAddress(), 5);
+        LCD_ShowNum(40, 80, Remote_RepeatCounter, 5);
 
-        Key = Remote_GetCommand();
-        if (Key) { Encoder_Set(Key); }
+        LCD_ShowNum(40, 100, AddressData[0], 1);
+        LCD_ShowNum(60, 100, AddressData[1], 1);
+        LCD_ShowNum(80, 100, AddressData[2], 1);
+        LCD_ShowNum(100, 100, AddressData[3], 1);
+        LCD_ShowNum(120, 100, AddressData[4], 1);
+        LCD_ShowNum(140, 100, AddressData[5], 1);
+        LCD_ShowNum(160, 100, AddressData[6], 1);
+        LCD_ShowNum(180, 100, AddressData[7], 1);
 
-        Encoder_Action(Encoder_GetCounter());
+        LCD_ShowNum(40, 120, AddressData[8], 1);
+        LCD_ShowNum(60, 120, AddressData[9], 1);
+        LCD_ShowNum(80, 120, AddressData[10], 1);
+        LCD_ShowNum(100, 120, AddressData[11], 1);
+        LCD_ShowNum(120, 120, AddressData[12], 1);
+        LCD_ShowNum(140, 120, AddressData[13], 1);
+        LCD_ShowNum(160, 120, AddressData[14], 1);
+        LCD_ShowNum(180, 120, AddressData[15], 1);
 
-        if (MLX90640_RefreshData()) {
-            Show_TempRaw(8, 208);
-            Show_TempBilinearInter(0, BAR, &TempData);
-            FPS_MLX90640_Counter++;
-        }
+        LCD_ShowNum(40, 140, CommandData[0], 1);
+        LCD_ShowNum(60, 140, CommandData[1], 1);
+        LCD_ShowNum(80, 140, CommandData[2], 1);
+        LCD_ShowNum(100, 140, CommandData[3], 1);
+        LCD_ShowNum(120, 140, CommandData[4], 1);
+        LCD_ShowNum(140, 140, CommandData[5], 1);
+        LCD_ShowNum(160, 140, CommandData[6], 1);
+        LCD_ShowNum(180, 140, CommandData[7], 1);
 
-        if (Battery_Flag) Battery_Refresh();
-
-        if (SelectReset_Flag) {
-            SelectReset_Flag = 0;
-            Key_RefreshSelect();
-        }
-
-        if (PubData_Flag) {
-            PubData_Flag = 0;
-            Data.Temp    = TempData.Target / 100;
-            // Pub_Data(MQTT_Topic);
-        }
-        break;
-    }
-}
-    
-
-
-
-    while (1)
-    {
-LED_Turn();
-
-LCD_ShowNum(40, 40,Time_Year,3);
-LCD_ShowNum(80, 40,Time_Mon,3);
-LCD_ShowNum(120, 40,Time_Day,3);
-
-LCD_ShowNum(40, 60,Time_Week,3);
-
-LCD_ShowNum(40, 80,Time_Hour,3);
-LCD_ShowNum(80, 80,Time_Min,3);
-LCD_ShowNum(120, 80,Time_Sec,3);
-DS3231_ReadTime();
-
-
-Time_Str=asctime(&Time_Date);
-LCD_ShowString(20,100,Time_Str);
-
-time_t time_cnt=DS3231_GetTimeStamp();
-Time_Str=ctime(&time_cnt);
-LCD_ShowString(20,120,Time_Str);
-
-sprintf(s,"%d",DS3231_GetTimeStamp());
-LCD_ShowString(20,140,s);
-
-
-Delay_ms(300);
-
-
-
-
-    }
-//秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
-while (1)
-{
-            if (Key_Get()) {
-            Remote_Transmit(REMOTE_ID,123);
-        }
-        LCD_ShowString(30, 20,"Command");
-        LCD_ShowNum(40, 40,Remote_GetCommand(),3);
+        LCD_ShowNum(40, 160, CommandData[8], 1);
+        LCD_ShowNum(60, 160, CommandData[9], 1);
+        LCD_ShowNum(80, 160, CommandData[10], 1);
+        LCD_ShowNum(100, 160, CommandData[11], 1);
+        LCD_ShowNum(120, 160, CommandData[12], 1);
+        LCD_ShowNum(140, 160, CommandData[13], 1);
+        LCD_ShowNum(160, 160, CommandData[14], 1);
+        LCD_ShowNum(180, 160, CommandData[15], 1);
         Delay_ms(300);
+    }*/
+    uint8_t Key_Temp;
+    while (1) {
+        switch (GlobalState) {
+            case InitMenu:
+                LCD_Clear(BLACK);
+                GlobalState = StartMenu;
+                Delay_ms(1000);
+                Key_Get();
+                break;
 
-}
+            case StartMenu:
+                OLED_Clear();
+                if ((!Menu_Global.isRun) && Menu_StartMenu.isInit && Menu_EnterEvent()) {
+                    Menu_Global.isRun = 1;
+                    Menu_RunMainMenu();
+                }
+                if (!Menu_StartMenu.isInit)
+                    Menu_RunMainMenu();
+                else {
+                    Menu_Global.isRun = 0;
+                    Encoder_Clear();
+                }
+                OLED_Update();
+                break;
 
+            case InitThermalCamera:
+                LCD_Clear(WHITE);
+                W25Q128_ReadUserData();
+                MLX90640_SendInitCMD();
+                TempPseColor_Init(GCM_Pseudo2);
+                Show_PseColorBar(0, 0);
+                Key_RefreshSelect();
+                GlobalState = StartThermalCamera;
+                break;
+
+            case StartThermalCamera:
+
+                Key_Temp = Key_Get();
+                LED_Turn();
+
+                if (Key_Temp == 2) {
+                    GlobalState = InitMenu;
+                }
+                if (Key_Temp == 1) {
+                    Key_RefreshSelect();
+                }
+
+                Encoder_Action(Encoder_GetCounter());
+
+                if (MLX90640_RefreshData()) {
+                    Show_TempRaw(8, 208);
+                    Show_TempBilinearInter(0, BAR, &TempData);
+                    FPS_MLX90640_Counter++;
+                }
+
+                if (Battery_Flag) Battery_Refresh();
+
+                if (SelectReset_Flag) {
+                    SelectReset_Flag = 0;
+                    Key_RefreshSelect();
+                }
+
+                if (PubData_Flag) {
+                    PubData_Flag = 0;
+                    Data.Temp    = TempData.Target / 100;
+                    // Pub_Data(MQTT_Topic);
+                }
+                break;
+
+            case InitClock:
+                LCD_Clear(BLACK);
+                POINT_COLOR = WHITE;
+                BACK_COLOR  = BLACK;
+                GlobalState = StartClock;
+                break;
+
+            case StartClock:
+                if (Key_Get()) GlobalState = InitMenu;
+                LED_Turn();
+                DS3231_ReadTime();
+                Time_Str                       = asctime(&Time_Date);
+                Time_Str[strlen(Time_Str) - 1] = '\0';
+                LCD_ShowString(20, 100, (const uint8_t *)Time_Str);
+                sprintf(s, "%d", DS3231_GetTimeStamp());
+                LCD_ShowString(20, 140, (const uint8_t *)s);
+                Delay_ms(300);
+                break;
+
+            case InitRemote:
+                break;
+
+            case StartRemote:
+
+                break;
+
+            case 10:
+
+                break;
+        }
+    }
+
+    // 秒(0)分(1)时(2)日(3)月(4)周(5)年(6)
+
+    // LCD_ShowNum(40, 40, Time_Year, 3);
+    // LCD_ShowNum(80, 40, Time_Mon, 3);
+    // LCD_ShowNum(120, 40, Time_Day, 3);
+
+    // LCD_ShowNum(40, 60, Time_Week, 3);
+
+    // LCD_ShowNum(40, 80, Time_Hour, 3);
+    // LCD_ShowNum(80, 80, Time_Min, 3);
+    // LCD_ShowNum(120, 80, Time_Sec, 3);
     // uint32_t time_cnt=DS3231_GetTimeStamp();
     // uint8_t temp[4];
     // temp[3]=(time_cnt>>24)&0xff;
@@ -360,7 +448,6 @@ while (1)
     //     if (abc > 240) abc = 1;
     //     // LED_Turn();
     // }
-
 }
 
 void TIM1_UP_IRQHandler(void)
@@ -380,7 +467,7 @@ void TIM1_UP_IRQHandler(void)
             key_Counter = 0;
             Key_Entry();
         }
-        if (battery_Counter >= 1000) {
+        if (battery_Counter >= 5000) {
             battery_Counter = 0;
             Battery_Flag    = 1;
         }
@@ -389,7 +476,7 @@ void TIM1_UP_IRQHandler(void)
             Select_State     = 2;
             SelectReset_Flag = 1;
         }
-        if (pubDat_Counter >= 500) {
+        if (pubDat_Counter >= 5000) {
             pubDat_Counter = 0;
             PubData_Flag   = 1;
         }
