@@ -23,6 +23,8 @@
 #include <time.h>
 #include "OLED.h"
 #include "Menu.h"
+#include "SHT45.h"
+#include "MAX44009.h"
 
 char str[100];
 
@@ -190,33 +192,8 @@ void Up_Data()
 extern uint8_t AddressData[16];
 extern uint8_t CommandData[16];
 
-char st[100];
+char debug_str[100];
 
-// #define CCS811_Add  0x5A<<1
-// #define STATUS_REG 0x00
-// #define MEAS_MODE_REG 0x01
-// #define ALG_RESULT_DATA 0x02
-// #define ENV_DATA 0x05
-// #define NTC_REG 0x06
-// #define THRESHOLDS 0x10
-// #define BASELINE 0x11
-// #define HW_ID_REG 0x20
-// #define ERROR_ID_REG 0xE0
-// #define APP_START_REG 0xF4
-// #define SW_RESET 0xFF
-// #define CCS_811_ADDRESS 0x5A
-// #define GPIO_WAKE 0x5
-// #define DRIVE_MODE_IDLE 0x0
-// #define DRIVE_MODE_1SEC 0x10
-// #define DRIVE_MODE_10SEC 0x20
-// #define DRIVE_MODE_60SEC 0x30
-// #define INTERRUPT_DRIVEN 0x8
-// #define THRESHOLDS_ENABLED 0x4
-
-// u8 BUF[12];
-// u8 Information[10];
-// u8 temp=0x5a;
-// u8 MeasureMode,Status,Error_ID;
 
 int main(void)
 {
@@ -229,8 +206,10 @@ int main(void)
     Encoder_Init();
     Key_Init();
     W25Q128_Init();
-    // DS3231_Init();
+    //DS3231_Init();
     CCS811_Init();
+    SHT45_Init();
+    MAX44009_Init();
     LCD_Init();       // 初始化TFT
     LCD_Clear(WHITE); // 清屏
     // EC800_Init();
@@ -242,67 +221,24 @@ int main(void)
     CCS811_SetMeasurementMode(DRIVE_MODE_1SEC);
 
     while (1) {
-        Delay_ms(2000);
+        Delay_ms(1000);
+        if(MAX44009_GetData())
+        {
+            sprintf(debug_str, "Lux=%.2f\r\n", MAX.Lux);
+            Debug_printf(debug_str);
+        }
+        if(SHT45_GetData())
+        {
+            sprintf(debug_str, "Temp=%.2f  Hum=%.2f\r\n", SHT.Temp, SHT.Hum);
+            Debug_printf(debug_str);
+        }
         if (CCS811_GetData()) {
-            sprintf(st, "eco2=%d  tvoc=%d\r\n", CCS.eco2, CCS.tvoc);
-            Debug_printf(st);
+            sprintf(debug_str, "eco2=%d  tvoc=%d\r\n", CCS.eco2, CCS.tvoc);
+            Debug_printf(debug_str);
         }
     }
 
-    /*
-    while (1) {
-        int8_t a=Encoder_Get_Div4();
-        if (a<0) {
-            Remote_Transmit(REMOTE_ID, 24);
-        }
-        if (a>0) {
-            Remote_Transmit(REMOTE_ID, 25);
-        }
-        if (Key_Get()) {
-            Remote_Transmit(REMOTE_ID, 64);
-        }
-        LCD_ShowString(30, 20, "Command");
-        LCD_ShowNum(40, 40, Remote_GetCommand(), 5);
-        LCD_ShowNum(40, 60, Remote_GetAddress(), 5);
-        LCD_ShowNum(40, 80, Remote_RepeatCounter, 5);
 
-        LCD_ShowNum(40, 100, AddressData[0], 1);
-        LCD_ShowNum(60, 100, AddressData[1], 1);
-        LCD_ShowNum(80, 100, AddressData[2], 1);
-        LCD_ShowNum(100, 100, AddressData[3], 1);
-        LCD_ShowNum(120, 100, AddressData[4], 1);
-        LCD_ShowNum(140, 100, AddressData[5], 1);
-        LCD_ShowNum(160, 100, AddressData[6], 1);
-        LCD_ShowNum(180, 100, AddressData[7], 1);
-
-        LCD_ShowNum(40, 120, AddressData[8], 1);
-        LCD_ShowNum(60, 120, AddressData[9], 1);
-        LCD_ShowNum(80, 120, AddressData[10], 1);
-        LCD_ShowNum(100, 120, AddressData[11], 1);
-        LCD_ShowNum(120, 120, AddressData[12], 1);
-        LCD_ShowNum(140, 120, AddressData[13], 1);
-        LCD_ShowNum(160, 120, AddressData[14], 1);
-        LCD_ShowNum(180, 120, AddressData[15], 1);
-
-        LCD_ShowNum(40, 140, CommandData[0], 1);
-        LCD_ShowNum(60, 140, CommandData[1], 1);
-        LCD_ShowNum(80, 140, CommandData[2], 1);
-        LCD_ShowNum(100, 140, CommandData[3], 1);
-        LCD_ShowNum(120, 140, CommandData[4], 1);
-        LCD_ShowNum(140, 140, CommandData[5], 1);
-        LCD_ShowNum(160, 140, CommandData[6], 1);
-        LCD_ShowNum(180, 140, CommandData[7], 1);
-
-        LCD_ShowNum(40, 160, CommandData[8], 1);
-        LCD_ShowNum(60, 160, CommandData[9], 1);
-        LCD_ShowNum(80, 160, CommandData[10], 1);
-        LCD_ShowNum(100, 160, CommandData[11], 1);
-        LCD_ShowNum(120, 160, CommandData[12], 1);
-        LCD_ShowNum(140, 160, CommandData[13], 1);
-        LCD_ShowNum(160, 160, CommandData[14], 1);
-        LCD_ShowNum(180, 160, CommandData[15], 1);
-        Delay_ms(300);
-    }*/
     uint8_t Key_Temp;
     while (1) {
         switch (GlobalState) {

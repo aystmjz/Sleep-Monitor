@@ -140,7 +140,10 @@ uint8_t CCS811_GetData(void)
         CCS.eco2 = (uint16_t)CCS.raw_data[0] * 256 + CCS.raw_data[1];
         CCS.tvoc = (uint16_t)CCS.raw_data[2] * 256 + CCS.raw_data[3];
         CCS811_Sleep();
-        return 1;
+        if (CCS.eco2 != 400 && CCS.eco2 != 0 && CCS.tvoc != 0)
+            return 1;
+        else
+            return 0;
     } else {
         CCS811_Sleep();
         return 0;
