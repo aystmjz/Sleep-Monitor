@@ -14,7 +14,6 @@
  *
  * 帧率显示,可以跳转到 OLED_Update() 函数解除注释开启;
  * OLED显示函数以江协科技的OLED显示屏驱动程序为基础进行了少量修改
- * OLED显示屏使用软件IIC通信: SCL接到PB8, SDA接到PB9;
  **********************************************************/
 
 /*菜单用到的按键函数独立出来,方便移植和修改,比如没有编码器可以用上下两个按键代替;*/
@@ -24,7 +23,7 @@ int8_t Menu_RollEvent(void) // 菜单滚动
 }
 int8_t Menu_EnterEvent(void) // 菜单确认
 {
-    return Key_Get(); // 确认键接到PB14;
+    return Key_Get() // 确认键接到PB14;
 }
 int8_t Menu_BackEvent(void) // 菜单返回
 {
@@ -32,7 +31,7 @@ int8_t Menu_BackEvent(void) // 菜单返回
     return 0;
 }
 
-int8_t GlobalState=0;
+enum GlobalStateStyle GlobalState;
 
 /*菜单全局属性*/
 struct MenuProperty Menu_Global = {
@@ -49,7 +48,7 @@ struct MenuProperty Menu_Global = {
 
     .Font_Width    = 6,  // 字体宽度 8 或 6
     .Font_Height   = 8,  // 字体高度
-    .Line_Height   = 12, // 行高
+    .Line_Height   = 14, // 行高12
     .Layout_Margin = 2,  // 页边距
 
     .Window_X = 0,   // 窗口位置X 面向对象
@@ -124,7 +123,7 @@ void Menu_MenuClassInit(struct Menu_Class *MU, struct Option_Class *Option_List)
             MU->Window_H = Menu_Global.Cursor_Actual_H;
             /*计算窗口目标位置尺寸*/
             MU->Target_Window_W = (MU->Option_MaxStrLen * MU->Font_Width) + (MU->Layout_Margin * 3);
-            MU->Target_Window_H = ((MU->Option_MaxNum > 5) ? (5) : (MU->Option_MaxNum)) * MU->Line_Height + (MU->Layout_Margin * 2);
+            MU->Target_Window_H = ((MU->Option_MaxNum > 4) ? (4) : (MU->Option_MaxNum)) * MU->Line_Height + (MU->Layout_Margin * 2);
             MU->Target_Window_X = (((Menu_Global.Cursor_Actual_X + Menu_Global.Cursor_Actual_W) + MU->Target_Window_W) > 120) ? (120 - MU->Target_Window_W) : (Menu_Global.Cursor_Actual_X + Menu_Global.Cursor_Actual_W);
             MU->Target_Window_Y = ((Menu_Global.Cursor_Actual_Y + MU->Target_Window_H) > 64) ? (64 - MU->Target_Window_H) : (Menu_Global.Cursor_Actual_Y);
             break;
@@ -135,7 +134,7 @@ void Menu_MenuClassInit(struct Menu_Class *MU, struct Option_Class *Option_List)
             MU->Window_W        = 0;
             MU->Window_H        = 0;
             MU->Target_Window_W = 120;
-            MU->Target_Window_H = 64;
+            MU->Target_Window_H = 60;
             MU->Target_Window_X = 0;
             MU->Target_Window_Y = 0;
             break;
@@ -158,7 +157,7 @@ int8_t Menu_RunWindow(struct Menu_Class *MU)
     {
         Roll_Event = Menu_RollEvent();
 
-        if (Menu_EnterEvent()) {
+        if (Menu_EnterEvent()==1) {
             /*如果功能不为空则执行功能,否则返回*/
             if (MU->Option_List[MU->Cat_i].func) {
                 MU->Option_List[MU->Cat_i].func();
@@ -286,8 +285,8 @@ int8_t Menu_RunWindow(struct Menu_Class *MU)
     /**********************************************************/
     /*调试信息*/
 
-    OLED_ShowSignedNum(90, 48, MU->Cur_i, 2, OLED_6X8);
-    OLED_ShowSignedNum(90, 56, MU->Cat_i, 2, OLED_6X8);
+    //OLED_ShowSignedNum(90, 48, MU->Cur_i, 2, OLED_6X8);
+    //OLED_ShowSignedNum(90, 56, MU->Cat_i, 2, OLED_6X8);
 
     // int delay = 1000000; while(delay--);
     /**********************************************************/
@@ -402,155 +401,3 @@ void Menu_ShowWallpaper(const uint8_t *Wallpaper)
     memcpy(OLED_DisplayBuf, Wallpaper, 1024);
 }
 
-/***
- * 函    数: 显示坤坤;
- * 参    数: 图片库的壁纸
- * 返 回 值:
- * 说    明: 使用memcpy高效率把壁纸数据复制到显存;
- */
-void Menu_Showkunkun(void)
-{
-    static uint8_t count = 0;
-
-    //memcpy(OLED_DisplayBuf, kunkun[count++], 512);
-    count %= 13;
-}
-
-/**
- * 函    数：运行简单列表
- * 参    数：选项列表
- * 返 回 值：
- * 说    明：把选项列表显示出来,并根据按键事件执行相应操作
- */
-void Menu_Run_Option_List(struct Option_Class *Option_List)
-{
-
-    int8_t Roll_Event      = 0; // 记录菜单滚动事件
-    int8_t Show_i          = 0; // 显示起始下标
-    int8_t Show_i_previous = 4; // 显示起始下标的前一个状态(用于比较)
-    int8_t Show_offset;         // 显示Y轴的偏移
-    int8_t Cat_i = 1;           // 选中下标默认为1,(因为Option_List[0]为"<<<")
-    int8_t Cur_i = 0;           // 光标下标默认为0
-
-    int8_t Option_MaxNum = 0;
-    for (Option_MaxNum = 0; Option_List[Option_MaxNum].String[0] != '.'; Option_MaxNum++) // 计算选项列表长度
-    {
-        // Option_List[Option_MaxNum].StrLen = Menu_GetOptionStrLen(Option_List[Option_MaxNum].String); // 顺手计算选项名字长度
-    }
-    Option_MaxNum--;
-
-    /*光标下标限制等于窗口高度减去上下页边距再除以行高*/
-    int8_t Cur_i_Ceiling = (Menu_Global.Window_H - Menu_Global.Layout_Margin * 2) / Menu_Global.Line_Height; // 计算光标限制位置;
-
-    /**********************************************************/
-
-    while (1) {
-
-        if (Menu_EnterEvent()) {
-            /*如果功能不为空则执行功能,否则返回*/
-            if (Option_List[Cat_i].func) {
-                Option_List[Cat_i].func();
-            } else {
-                return;
-            }
-        }
-        if (Menu_BackEvent()) {
-            return;
-        }
-
-        /*根据按键事件更改选中下标和光标下标*/
-        Roll_Event = Menu_RollEvent();
-        if (Roll_Event) {
-            /*更新下标*/
-            Cur_i += Roll_Event;
-            Cat_i += Roll_Event;
-            /*限制选中下标*/
-            if (Cat_i > Option_MaxNum) {
-                Cat_i = Option_MaxNum;
-            }
-            if (Cat_i < 0) {
-                Cat_i = 0;
-            }
-            /*限制光标下标*/
-            if (Cur_i >= Cur_i_Ceiling) {
-                Cur_i = Cur_i_Ceiling - 1;
-            }
-            if (Cur_i > Option_MaxNum) {
-                Cur_i = Option_MaxNum;
-            }
-            if (Cur_i < 0) // 踩坑记录: (Cur_i >= Cur_i_Ceiling) Cur_i_Ceiling 有可能是负数, 如果放在(Cur_i < 0)后面判断, 则 Cur_i 会变成负数, 造成程序卡死; 结论: 如果进行位置限制判断, 变量判断应该放在前,常量判断应该放在后;
-            {
-                Cur_i = 0;
-            }
-        }
-
-        /**********************************************************/
-
-        OLED_Clear();
-
-        /*计算显示起始下标*/
-        Show_i = Cat_i - Cur_i;
-
-        if (1) // 增加显示偏移量实现平滑移动
-        {
-            if (Show_i - Show_i_previous) // 如果下标有偏移
-            {
-                Show_offset     = (Show_i - Show_i_previous) * Menu_Global.Line_Height; // 计算显示偏移量
-                Show_i_previous = Show_i;
-            }
-            if (Show_offset) {
-                Show_offset /= Menu_Global.Slide_ActSpeed; // 显示偏移量逐渐归零
-            }
-        }
-
-        for (int8_t i = -1; i < Cur_i_Ceiling + 1; i++) // 遍历显示选项(遍历 i 从 -1 开始到 Cur_i_Ceiling + 1 结束, 是为了菜单滚动的时候首行和尾行不会有空白);
-        {
-            if (Show_i + i < 0) {
-                continue;
-            }
-            if (Show_i + i > Option_MaxNum) {
-                break;
-            }
-
-            /*菜单格式化打印函数会返回打印的字符串长度*/
-            Option_List[Show_i + i].StrLen =
-                /*使用格式化字符串打印, 支持添加一个(float)变量*/
-                Menu_PrintfOptionStr(
-                    /*显示从窗口X起点, 加上页边距*/
-                    2 + Menu_Global.Window_X + Menu_Global.Layout_Margin,
-                    /*显示从窗口Y起点, 加上页边距, 加上行偏移, 加上显示偏移, 加上垂直居中*/
-                    Menu_Global.Window_Y + (Menu_Global.Layout_Margin) + (i * Menu_Global.Line_Height) + (Show_offset) + ((Menu_Global.Line_Height - Menu_Global.Font_Height) / 2),
-                    /*显示宽度范围减去双倍(左右)页边距*/
-                    Menu_Global.Window_W - Menu_Global.Layout_Margin * 2,
-                    /*显示高度就是行高(或字高)*/
-                    Menu_Global.Line_Height,
-                    /*显示字符的宽度*/
-                    Menu_Global.Font_Width,
-                    /*要显示的字符串*/
-                    Option_List[Show_i + i].String,
-                    /*可选变量*/
-                    *Option_List[Show_i + i].Variable);
-        }
-
-        // 调用显示光标函数
-        Menu_ShowCursor(Menu_Global.Window_X + Menu_Global.Layout_Margin,                                     // 光标左起点加上页边距
-                        Menu_Global.Window_Y + Menu_Global.Layout_Margin + (Cur_i * Menu_Global.Line_Height), // 光标上起点加上光标行偏移
-                        4 + Option_List[Cat_i].StrLen * Menu_Global.Font_Width + Menu_Global.Layout_Margin,   // 光标宽度等于字符串长度乘以字符宽度加上页边距(跟随字符串)
-                                                                                                              // Menu_Global.Window_W - Menu_Global.Layout_Margin * 2,// 光标宽度等于窗口宽度减去左右页边距(等长)(二选一注释)
-                        Menu_Global.Line_Height,                                                              // 光标高度就是行高
-                        Menu_Global.Cur_Style,                                                                // 光标状态
-                        Menu_Global.Cursor_ActSpeed);                                                         // 光标速度
-
-        // OLED_DrawRectangle(Menu_Global.Window_X, Menu_Global.Window_Y, Menu_Global.Window_W, Menu_Global.Window_H, 0); // 显示窗口边框,根据个人喜好选择
-
-        /**********************************************************/
-        /*调试信息*/
-
-        // OLED_ShowSignedNum(110, 48, Cur_i, 2, OLED_6X8);
-        // OLED_ShowSignedNum(110, 56, Cat_i, 2, OLED_6X8);
-
-        // int delay = 1000000; while(delay--);
-        /**********************************************************/
-        OLED_Update();
-    }
-}

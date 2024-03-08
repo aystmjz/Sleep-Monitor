@@ -22,10 +22,11 @@ int8_t Menu_Start(int8_t Shift)
 /*创建选项列表*/
 struct Option_Class Menu_StartOptionList[] = {
     {"<<<"},
-    {"示波器", Menu_RunToolsMenu},
-    {"Games", Menu_RunGamesMenu},
-    {"Setting", Menu_RunSettingMenu}, // 设置
-    {"Info", Menu_Information},       // 信息
+    {"工具", Menu_RunToolsMenu},
+    {"数据"},
+    {"游戏", Menu_RunGamesMenu},
+    {"设置", Menu_RunSettingMenu},
+    {"信息", Menu_Information},
     {".."}};
 
 /*创建开始菜单对象*/
@@ -50,11 +51,16 @@ void Menu_RunMainMenu(void)
     Menu_RunWindow(&Menu_StartMenu);
 }
 
-void MLX90640_Start(void)
+void Menu_StartThermalCamera(void)
 {
     Menu_TurnOffMenu();
-	LCD_Clear(WHITE);
-	GlobalState = 1;
+	GlobalState = InitThermalCamera;
+}
+
+void Menu_StartClock(void)
+{
+    Menu_TurnOffMenu();
+	GlobalState = InitClock;
 }
 
 void Menu_RunToolsMenu(void)
@@ -62,14 +68,9 @@ void Menu_RunToolsMenu(void)
     /*创建选项列表*/
     static struct Option_Class Menu_ToolsOptionList[] = {
         {"<<<"},
-        {"定时器", Menu_RunGamesMenu}, // 6-1 定时器定时中断
-        {"输入捕获"},                  // 6-6 输入捕获模式测频率
-        {"PWM输出", Tools_PWM_Output}, // 6-3 PWM驱动LED呼吸灯
-        {"PWM输入"},                   // 6-7 PWMI模式测频率占空比
-        {"编码器"},                    // 6-8 编码器接口测速
-        {"串口"},                      // 9-3 串口收发HEX数据包
-        {"示波器", MLX90640_Start},    // 示波器
-        {"ADC"},                       // 8-2 DMA+AD多通道
+        {"热成像仪", Menu_StartThermalCamera},
+        {"红外遥控", Tools_Remote},
+        {"时钟",Menu_StartClock},
         {".."}};
 
     /*创建菜单对象*/
@@ -85,20 +86,39 @@ void Menu_RunToolsMenu(void)
     Menu_RunWindow(&Menu_ToolsMenu);
 }
 
+void Menu_StartNowData(void)
+{
+    Menu_TurnOffMenu();
+	GlobalState = InitNowData;
+}
+
+void Menu_RunDataMenu(void)
+{
+    /*创建选项列表*/
+    static struct Option_Class Menu_DataOptionList[] = {
+        {"<<<"},
+        {"实时环境数据", Menu_StartThermalCamera},
+        {"历史环境数据", Data_Remote},
+        {".."}};
+
+    /*创建菜单对象*/
+    static struct Menu_Class Menu_DataMenu = {.isInit = 1}; // 赋值初始化
+
+    if (Menu_DataMenu.isInit) {
+        Menu_MenuClassInit(&Menu_DataMenu, Menu_DataOptionList);
+        /*手动配置区*******/
+
+        /*******手动配置区*/
+    }
+
+    Menu_RunWindow(&Menu_DataMenu);
+}
+
 void Menu_RunGamesMenu(void)
 {
     static struct Option_Class Menu_GamesOptionList[] = {
         {"<<<"},
-        {"Snake", Game_Snake_Init},      // 贪吃蛇
-        {"Snake II", Menu_RunToolsMenu}, // 贪吃蛇2
-        //	{"Snake III", Game_Snake_Init},	//贪吃蛇3
-        //	{"Snake IV", Game_Snake_Init},	//贪吃蛇4
-        //	{"Snake V", Game_Snake_Init},	//贪吃蛇5
-        //	{"Snake VI", Game_Snake_Init},	//贪吃蛇6
-        //	{"Snake VII", Game_Snake_Init},	//贪吃蛇7
-        //	{"Snake VIII", Game_Snake_Init},//贪吃蛇8
-        //	{"Snake IX", Game_Snake_Init},	//贪吃蛇9
-        //{"Snake X", Game_Snake_Init},		 // 贪吃蛇10
+        {"贪吃蛇", Game_Snake_Init},      // 贪吃蛇
         {"康威生命游戏", Game_Of_Life_Play}, // 康威生命游戏,元胞自动机
         {".."}};
     static struct Menu_Class Menu_GamesMenu = {multi, 1};
@@ -147,8 +167,3 @@ void Menu_Information(void)
     }
 }
 
-/**********************************************************/
-void text()
-{
-    Menu_Run_Option_List(Menu_StartOptionList);
-}

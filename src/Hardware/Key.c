@@ -4,29 +4,29 @@ uint8_t Key_KeyNumber;
 
 void Timer_Init(void)
 {
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2,ENABLE);
-	TIM_InternalClockConfig(TIM2);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1,ENABLE);
+	TIM_InternalClockConfig(TIM1);
 
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	TIM_TimeBaseInitStructure.TIM_ClockDivision=TIM_CKD_DIV1;
 	TIM_TimeBaseInitStructure.TIM_CounterMode=TIM_CounterMode_Up;
-	TIM_TimeBaseInitStructure.TIM_Period=950-1;//1ms
+	TIM_TimeBaseInitStructure.TIM_Period=9500-1;//100ms
 	TIM_TimeBaseInitStructure.TIM_Prescaler=72-1;
 	TIM_TimeBaseInitStructure.TIM_RepetitionCounter=0;
-	TIM_TimeBaseInit(TIM2,&TIM_TimeBaseInitStructure);
+	TIM_TimeBaseInit(TIM1,&TIM_TimeBaseInitStructure);
 
-	TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
-	TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+	TIM_ClearITPendingBit(TIM1,TIM_IT_Update);
+	TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel=TIM2_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel=TIM1_UP_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelCmd=ENABLE;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=2;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority=1;
 	NVIC_Init(&NVIC_InitStructure);
 
-	TIM_Cmd(TIM2,ENABLE);
+	TIM_Cmd(TIM1,ENABLE);
 }
 
 
@@ -72,5 +72,5 @@ void Key_Entry()
 	LastState=NowState;
 	NowState=Key_GetState();
 	if(LastState==0&&NowState==1){Key_KeyNumber=1;HoldTimer=0;}
-	else if(LastState==1&&NowState==1){HoldTimer++;if(HoldTimer>20)Key_KeyNumber=1;}
+	else if(LastState==1&&NowState==1){HoldTimer++;if(HoldTimer>20)Key_KeyNumber=2;}
 }

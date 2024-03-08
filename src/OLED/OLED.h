@@ -18,7 +18,7 @@
 
 /*********************参数宏定义*/
 
-extern uint8_t OLED_DisplayBuf[8][240];
+extern uint8_t OLED_DisplayBuf[8][120];
 
 /*函数声明*********************/
 

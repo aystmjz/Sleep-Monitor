@@ -7,7 +7,7 @@
 #include "Menu.h"
 
 
-void Tools_PWM_Output(void);
+void Tools_Remote(void);
 
 #endif
 

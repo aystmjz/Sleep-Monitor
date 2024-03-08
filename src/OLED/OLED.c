@@ -79,7 +79,7 @@
   * 随后调用OLED_Update函数或OLED_UpdateArea函数
   * 才会将显存数组的数据发送到OLED硬件，进行显示
   */
-uint8_t OLED_DisplayBuf[8][240];
+uint8_t OLED_DisplayBuf[8][120];
 
 /*********************全局变量*/
 
@@ -1006,8 +1006,8 @@ void OLED_DrawPoint(uint8_t X, uint8_t Y)
 uint8_t OLED_GetPoint(uint8_t X, uint8_t Y)
 {
 	/*参数检查，保证指定位置不会超出屏幕范围*/
-	//if (X > 127) {return 0;}
-	//if (Y > 63) {return 0;}
+	if (X > 119) {return 0;}
+	if (Y > 63) {return 0;}
 	
 	/*判断指定位置的数据*/
 	if (OLED_DisplayBuf[Y / 8][X] & 0x01 << (Y % 8))

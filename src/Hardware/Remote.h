@@ -3,19 +3,18 @@
 #include "Delay.h"
 #include "sys.h"
 
-#define REMOTE_ADDRESS_LEN    8
-#define REMOTE_COMMAND_LEN    8
-#define REMOTE_ID             0x02 // 红外遥控识别码(ID)
+#define REMOTE_ADDRESS_LEN 8
+#define REMOTE_COMMAND_LEN 8
+#define REMOTE_ID          0x00 // 红外遥控识别码(ID)
 
 /*红外发送*/
 typedef enum {
     REMOTE_Common_Verify,
-    REMOTE_No_Verify,
     REMOTE_Repeat_Verify,
+    REMOTE_No_Verify,
 } RemoteMethod;
 
-#define REMOTE_PIN  PAout(6)
-
+#define REMOTE_PIN       PAout(6)
 
 #define START_LOW_TIME   9000
 #define START_HIGH_TIME  4500
@@ -37,9 +36,13 @@ typedef enum {
 #define REPEAT_TIME           (REPEAT_LOW_TIME + REPEAT_HIGH_TIME)
 #define ERROR_TIME            500
 
-#define REMOTE_ID_VERIFY      0
+#define REMOTE_ID_VERIFY      1
 #define REMOTE_ADDRESS_VERIFY 0
-#define REMOTE_COMMAND_VERIFY 0
+#define REMOTE_COMMAND_VERIFY 1
+
+#define CMD_START                 0x40
+#define CMD_UP                    0x19
+#define CMD_DOWN                  0x18
 
 extern uint8_t Remote_RepeatCounter; // 按键按下的次数
 

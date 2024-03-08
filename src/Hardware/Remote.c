@@ -1,4 +1,4 @@
-#include "remote.h"
+#include "Remote.h"
 
 static RemoteMethod Method; // 发送模式
 
@@ -9,7 +9,7 @@ void Remote_PWMInit(void)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
 
     GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_6; // PA6 输出
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_6; // PA6 输出PWM
     GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
@@ -34,7 +34,7 @@ void Remote_PWMInit(void)
     TIM_Cmd(TIM3, ENABLE);
 }
 
-// 红外遥控初始化 设置IO以及定时器2的输入捕获
+// 红外遥控初始化 设置IO以及定时器2的输入捕获初始化
 void Remote_Init(RemoteMethod method)
 {
     Method = method;
@@ -96,8 +96,8 @@ static uint8_t State      = 0;
 static uint8_t RepeatFlag = 0, DateIndex = 0, ReadyFlag = 0;
 static uint16_t Time;
 static uint16_t Address, Command;
-static uint8_t AddressData[REMOTE_ADDRESS_LEN * 2 - 1];
-static uint8_t CommandData[REMOTE_COMMAND_LEN * 2 - 1];
+uint8_t AddressData[REMOTE_ADDRESS_LEN * 2 - 1];
+uint8_t CommandData[REMOTE_COMMAND_LEN * 2 - 1];
 uint8_t Remote_RepeatCounter = 0;
 
 // 定时器2中断服务程序
@@ -132,20 +132,20 @@ void TIM2_IRQHandler(void)
             case RUN:
                 Time      = TIM_GetCapture1(TIM2);
                 ReadyFlag = 0;
-                if (Time > (ZERO_TIME - ERROR_TIME) && Time < (ZERO_TIME + ERROR_TIME)) { // 识别低电平
-                    if (DateIndex >= (REMOTE_ADDRESS_LEN * 2)) {
-                        CommandData[DateIndex - (REMOTE_ADDRESS_LEN * 2)] = 0;
-                        DateIndex++;
-                    } else {
-                        AddressData[DateIndex] = 0;
-                        DateIndex++;
-                    }
-                } else if (Time > (ONE_TIME - ERROR_TIME) && Time < (ONE_TIME + ERROR_TIME)) { // 识别高电平
+                if (Time > (ONE_TIME - ERROR_TIME) && Time < (ONE_TIME + ERROR_TIME)) { // 识别高电平
                     if (DateIndex >= (REMOTE_ADDRESS_LEN * 2)) {
                         CommandData[DateIndex - (REMOTE_ADDRESS_LEN * 2)] = 1;
                         DateIndex++;
                     } else {
                         AddressData[DateIndex] = 1;
+                        DateIndex++;
+                    }
+                } else if (Time > (ZERO_TIME - ERROR_TIME) && Time < (ZERO_TIME + ERROR_TIME)) { // 识别低电平
+                    if (DateIndex >= (REMOTE_ADDRESS_LEN * 2)) {
+                        CommandData[DateIndex - (REMOTE_ADDRESS_LEN * 2)] = 0;
+                        DateIndex++;
+                    } else {
+                        AddressData[DateIndex] = 0;
                         DateIndex++;
                     }
                 } else { // 错误处理
@@ -168,7 +168,7 @@ uint8_t Remote_Verify(void)
 {
     uint16_t address = 0, in_address = 0;
     uint16_t command = 0, in_command = 0;
-    in_address |= 0xffff << REMOTE_COMMAND_LEN; // 补位
+    in_address |= 0xffff << REMOTE_ADDRESS_LEN; // 补位
     in_command |= 0xffff << REMOTE_COMMAND_LEN;
     for (uint8_t i = 0; i < REMOTE_ADDRESS_LEN; i++) { // 数据处理
         address |= AddressData[i] << i;
@@ -236,16 +236,16 @@ void Remote_SendRepeat(void)
 
 void Remote_SendZero(void)
 {
-    Remote_Send38KHZ(ONE_LOW_TIME);
+    Remote_Send38KHZ(ZERO_LOW_TIME);
     REMOTE_PIN = 0;
-    Delay_us(ONE_HIGH_TIME);
+    Delay_us(ZERO_HIGH_TIME);
 }
 
 void Remote_SendOne(void)
 {
-    Remote_Send38KHZ(ZERO_LOW_TIME);
+    Remote_Send38KHZ(ONE_LOW_TIME);
     REMOTE_PIN = 0;
-    Delay_us(ZERO_HIGH_TIME);
+    Delay_us(ONE_HIGH_TIME);
 }
 
 void Remote_Transmit(uint16_t address, uint16_t command)
@@ -305,3 +305,58 @@ void Remote_Transmit(uint16_t address, uint16_t command)
             break;
     }
 }
+
+/*
+while (1) {
+    int8_t a=Encoder_Get_Div4();
+    if (a<0) {
+        Remote_Transmit(REMOTE_ID, 24);
+    }
+    if (a>0) {
+        Remote_Transmit(REMOTE_ID, 25);
+    }
+    if (Key_Get()) {
+        Remote_Transmit(REMOTE_ID, 64);
+    }
+    LCD_ShowString(30, 20, "Command");
+    LCD_ShowNum(40, 40, Remote_GetCommand(), 5);
+    LCD_ShowNum(40, 60, Remote_GetAddress(), 5);
+    LCD_ShowNum(40, 80, Remote_RepeatCounter, 5);
+
+    LCD_ShowNum(40, 100, AddressData[0], 1);
+    LCD_ShowNum(60, 100, AddressData[1], 1);
+    LCD_ShowNum(80, 100, AddressData[2], 1);
+    LCD_ShowNum(100, 100, AddressData[3], 1);
+    LCD_ShowNum(120, 100, AddressData[4], 1);
+    LCD_ShowNum(140, 100, AddressData[5], 1);
+    LCD_ShowNum(160, 100, AddressData[6], 1);
+    LCD_ShowNum(180, 100, AddressData[7], 1);
+
+    LCD_ShowNum(40, 120, AddressData[8], 1);
+    LCD_ShowNum(60, 120, AddressData[9], 1);
+    LCD_ShowNum(80, 120, AddressData[10], 1);
+    LCD_ShowNum(100, 120, AddressData[11], 1);
+    LCD_ShowNum(120, 120, AddressData[12], 1);
+    LCD_ShowNum(140, 120, AddressData[13], 1);
+    LCD_ShowNum(160, 120, AddressData[14], 1);
+    LCD_ShowNum(180, 120, AddressData[15], 1);
+
+    LCD_ShowNum(40, 140, CommandData[0], 1);
+    LCD_ShowNum(60, 140, CommandData[1], 1);
+    LCD_ShowNum(80, 140, CommandData[2], 1);
+    LCD_ShowNum(100, 140, CommandData[3], 1);
+    LCD_ShowNum(120, 140, CommandData[4], 1);
+    LCD_ShowNum(140, 140, CommandData[5], 1);
+    LCD_ShowNum(160, 140, CommandData[6], 1);
+    LCD_ShowNum(180, 140, CommandData[7], 1);
+
+    LCD_ShowNum(40, 160, CommandData[8], 1);
+    LCD_ShowNum(60, 160, CommandData[9], 1);
+    LCD_ShowNum(80, 160, CommandData[10], 1);
+    LCD_ShowNum(100, 160, CommandData[11], 1);
+    LCD_ShowNum(120, 160, CommandData[12], 1);
+    LCD_ShowNum(140, 160, CommandData[13], 1);
+    LCD_ShowNum(160, 160, CommandData[14], 1);
+    LCD_ShowNum(180, 160, CommandData[15], 1);
+    Delay_ms(300);
+}*/

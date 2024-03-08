@@ -13,6 +13,21 @@
 #include "Game_Snake.h"
 #include "game_of_life.h"
 
+
+enum GlobalStateStyle
+{
+	InitMenu,
+	StartMenu,
+	InitThermalCamera,
+	StartThermalCamera,
+	InitClock,
+	StartClock,
+	InitRemote,
+	StartRemote,
+	InitNowData,
+	StartNowData,
+};
+
 enum CursorStyle
 {
 	reverse,
@@ -25,14 +40,6 @@ enum MenuStyle
 	multi,
 	single,
 };
-
-//struct Object
-//{
-//	int8_t X;  // 位置X
-//	int8_t Y;  // 位置Y
-//	uint8_t W; // 宽度
-//	uint8_t H; // 高度
-//};
 
 struct MenuProperty
 {
@@ -63,7 +70,7 @@ struct Option_Class
 {
 	char *String;		// 选项名字
 	void (*func)(void); // 函数指针
-	float *Variable;	// 数值
+	uint16_t *Variable;	// 数值
 
 	// int8_t Coord_X; // 选项坐标X
 	// int8_t Coord_Y; // 选项坐标Y
@@ -116,7 +123,7 @@ struct Menu_Class
 extern struct MenuProperty Menu_Global;//全局属性
 extern struct Menu_Class Menu_StartMenu;//开始菜单对象
 
-extern int8_t GlobalState;
+extern enum GlobalStateStyle GlobalState;
 
 /**********************************************************/
 int8_t Menu_Start(int8_t Shift);
@@ -124,7 +131,6 @@ void Menu_SelectOption(void);
 void Menu_TurnOffMenu(void);
 /**********************************************************/
 int8_t Menu_RunWindow(struct Menu_Class *MU); // 运行窗口
-void Menu_Run_Option_List(struct Option_Class *Option_List);//运行选项列表
 /**********************************************************/
 uint8_t Menu_GetOptionStrLen(char *String);//获取选项字符串长度
 uint8_t Menu_PrintfOptionStr(uint8_t X, uint8_t Y, uint8_t Width, uint8_t Height, uint8_t FontSize, char *format, ...);//范围格式化字符串打印

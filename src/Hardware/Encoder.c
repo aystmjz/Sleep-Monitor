@@ -1,5 +1,7 @@
 #include "Encoder.h"
-#include "stm32f10x.h"  
+
+static int16_t lastNum;
+
 void Encoder_Init(void)
 {
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4,ENABLE);
@@ -33,14 +35,33 @@ void Encoder_Init(void)
 }
 
 
-int16_t Encoder_Get(void)
+int16_t Encoder_GetCounter(void)
 {
 	return (TIM_GetCounter(TIM4)+1)/4;
 }
 
+void Encoder_Set(int16_t Num)
+{
+	TIM_SetCounter(TIM4,Num*4-1);
+}
+
 void Encoder_Clear(void)
 {
+	lastNum=0;
 	TIM_SetCounter(TIM4,0);
+}
+
+int16_t Encoder_Get_Div4(void)
+{
+	if(Encoder_GetCounter() - lastNum)
+	{
+		int16_t temp = (Encoder_GetCounter() - lastNum);
+
+		lastNum = Encoder_GetCounter();
+		return temp;
+	}
+	return 0;
+
 }
 
 
