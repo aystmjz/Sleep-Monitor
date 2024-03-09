@@ -8,6 +8,9 @@
 
 
 void Tools_Remote(void);
+void Tools_Reader(void);
+void Disable_MUReadKey_Frame(void);
+void Disable_MUReadKey_Mouse(void);
 
 #endif
 

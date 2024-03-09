@@ -5,6 +5,9 @@
 #include "SPI.h"
 #include "sys.h"
 #include <time.h>
+#include "DS3231.h"
+#include "EC800.h"
+#include "led.h"
 
 #define W25Q128_WRITE_ENABLE                     0x06
 #define W25Q128_WRITE_DISABLE                    0x04
@@ -47,7 +50,9 @@ void W25Q128_SectorErase(uint32_t Address);
 void W25Q128_BlockErase(uint32_t Address);
 void W25Q128_ReadData(uint32_t Address, uint8_t *DataArray, uint32_t Count);
 uint8_t W25Q128_GetNewestBlock(void);
+uint8_t W25Q128_SearchBlock(time_t time_cnt);
 uint32_t W25Q128_GetBlockTimeStamp(uint8_t block_index);
-void W25Q128_WriteBlockTimeStamp(uint32_t Address,time_t  time_cnt);
+void W25Q128_WriteBlockTimeStamp(uint8_t block_index, time_t time_cnt);
+void W25Q128_WirteData(void);
 
 #endif

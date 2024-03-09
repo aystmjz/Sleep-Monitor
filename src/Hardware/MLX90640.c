@@ -1,9 +1,10 @@
 #include "MLX90640.h"
 
-const uint8_t CMD_SAVE[4] = {0xA5, 0x56, 0x02, 0xFD};
-const uint8_t CMD_AUTO[4] = {0xA5, 0x35, 0x02, 0xDC};
-uint8_t RX_BUF[1550]      = {0};
-uint8_t Emissivity         = 95;
+const uint8_t CMD_SAVE[4]   = {0xA5, 0x56, 0x02, 0xFD};
+const uint8_t CMD_AUTO[4]   = {0xA5, 0x35, 0x02, 0xDC};
+const uint8_t CMD_MANUAL[4] = {0xA5, 0x35, 0x01, 0xDB};
+uint8_t RX_BUF[1550]        = {0};
+uint8_t Emissivity          = 95;
 extern uint8_t Select_State;
 
 const char *MQTT_Topic = "aystmjz/topic/hxd";
@@ -192,13 +193,13 @@ void TempPseColor_Init(ConverMethod Method)
             default:
                 break;
         }
-        Color              = LCD_RGBToDATA(colorR, colorG, colorB);
-        PseColor[n].RGB_H  = Color >> 8;
-        PseColor[n].RGB_L  = Color;
-        PseColor[n].RGB    = Color;
-        PseColor[n].colorR = colorR;
-        PseColor[n].colorG = colorG;
-        PseColor[n].colorB = colorB;
+        Color             = LCD_RGBToDATA(colorR, colorG, colorB);
+        PseColor[n].RGB_H = Color >> 8;
+        PseColor[n].RGB_L = Color;
+        // PseColor[n].RGB    = Color;
+        // PseColor[n].colorR = colorR;
+        // PseColor[n].colorG = colorG;
+        // PseColor[n].colorB = colorB;
     }
     // sprintf(strc, "colorR=%.2d colorG=%.2d colorB=%.2d \r\n", colorR, colorG, colorB);
     // Debug_printf(strc);
@@ -256,7 +257,7 @@ void Show_Text(uint8_t n)
 
         LCD_MDA_ShowString(96, "FPS ", mode);
         LCD_MDA_ShowNum(128, FPS_MLX90640, 2, mode);
-        //LCD_MDA_ShowNum(144, Remote_GetCommand(), 2, mode);
+        // LCD_MDA_ShowNum(144, Remote_GetCommand(), 2, mode);
 
         LCD_MDA_ShowString(160, "MIN=", mode);
         LCD_MDA_ShowNum(192, TempData.Min / 100, 2, mode);
@@ -296,12 +297,12 @@ void Show_TempBilinearInter(uint8_t x, uint8_t y, TempDataTypeDef *Data)
                     uint16_t Data_Zoom, Index;
                     uint8_t k1, k2, k3, k4;
                     if ((ZOOM * i + m) > (SCREEN - 1)) continue;
-                    k1                       = (ZOOM - m) * (ZOOM - n);
-                    k2                       = m * (ZOOM - n);
-                    k3                       = (ZOOM - m) * n;
-                    k4                       = m * n;
-                    Data_Zoom                = (k1 * Data->PseColor[i][j] + k2 * Data->PseColor[i + 1][j] + k3 * Data->PseColor[i][j + 1] + k4 * Data->PseColor[i + 1][j + 1]) / (ZOOM * ZOOM);
-                    Index                    = (n * SCREEN + ZOOM * i + m) * 2;
+                    k1                      = (ZOOM - m) * (ZOOM - n);
+                    k2                      = m * (ZOOM - n);
+                    k3                      = (ZOOM - m) * n;
+                    k4                      = m * n;
+                    Data_Zoom               = (k1 * Data->PseColor[i][j] + k2 * Data->PseColor[i + 1][j] + k3 * Data->PseColor[i][j + 1] + k4 * Data->PseColor[i + 1][j + 1]) / (ZOOM * ZOOM);
+                    Index                   = (n * SCREEN + ZOOM * i + m) * 2;
                     LCD_SendBuff[Index]     = PseColor[Data_Zoom].RGB_H;
                     LCD_SendBuff[Index + 1] = PseColor[Data_Zoom].RGB_L;
                 }
@@ -312,6 +313,13 @@ void Show_TempBilinearInter(uint8_t x, uint8_t y, TempDataTypeDef *Data)
         LCD_DMA_Waite();
         if (j == (Raw_H / 2) && CROSS) LCD_DrawCross(SCREEN / 2, Raw_H * ZOOM / 2 + BAR, 5, WHITE);
         Show_MinAndMax(j);
+    }
+    // char temp[10];
+    // sprintf(temp,"x1=%d  y1=%d  x2=%d  y2=%d  \r\n",TempData.Face_Left,TempData.Face_Up,TempData.Face_Right,TempData.Face_Down);
+    // Debug_printf(temp);
+    if (TempData.Face_Flag) {
+        LCD_DrawRectangle(TempData.Face_Left * ZOOM, TempData.Face_Up * ZOOM + BAR, TempData.Face_Right * ZOOM, TempData.Face_Down * ZOOM + BAR);
+        LCD_DrawCross(((TempData.Face_x * SCREEN) / (Raw_L - 1)), (((TempData.Max_y + 1) * Raw_H * ZOOM) / (Raw_H + 1)) + BAR, 5, WHITE);
     }
 }
 
@@ -352,14 +360,19 @@ void MLX90640_SendCMD(const uint8_t *CMD)
     Delay_ms(10);
 }
 
-void MLX90640_SendInitCMD()
+void MLX90640_SendInitCMD(void)
 {
     MLX90640_SendCMD(CMD_AUTO); // 发送自动输出指令
     MLX90640_SendCMD(CMD_SAVE); // 保存
-    MLX90640_SetEmissivity(95);
 }
 
-void MLX90640_Init()
+void MLX90640_TurnOff(void)
+{
+    MLX90640_SendCMD(CMD_MANUAL); // 发送手动输出指令
+    MLX90640_SendCMD(CMD_SAVE);   // 保存
+}
+
+void MLX90640_Init(void)
 {
     MLX90640_SendInitCMD();
     uart1_init(11520);
@@ -367,36 +380,59 @@ void MLX90640_Init()
 
 uint8_t MLX90640_RefreshData(void)
 {
-    int16_t Temperature, Max = -1000, Min = 10000;
-    uint32_t Sum = 0;
-    uint8_t y_p  = 0, data_buf[1550];
+    int8_t face_up = Raw_H - 1, face_down = 0, face_left = Raw_L - 1, face_right = 0, face_flag = 0;
+    uint16_t face_num = 0, face_x_sum = 0, face_y_sum = 0;
+    uint32_t temp_sum = 0, face_temp_sum = 0;
+
+    int16_t temperature, max = -1000, min = 10000;
+    uint8_t y_p = 0, data_buf[1550];
     if (MLX90640_CheckData(data_buf)) {
         for (int8_t y = 23; y >= 0; y--) {
             uint8_t x_p = 0;
             for (uint8_t x = 4; x < 64 + 4; x += 2) {
-                Temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
-                if (Temperature < Min) {
-                    Min            = Temperature;
+                temperature = ((int16_t)data_buf[x + 1 + 64 * y] << 8 | data_buf[x + 64 * y]);
+                if (temperature < min) {
+                    min            = temperature;
                     TempData.Min_x = x_p;
                     TempData.Min_y = y_p;
                 }
-                if (Temperature > Max) {
-                    Max            = Temperature;
+                if (temperature > max) {
+                    max            = temperature;
                     TempData.Max_x = x_p;
                     TempData.Max_y = y_p;
                 }
-                Sum += Temperature;
-                TempData.Raw[x_p][y_p] = Temperature;
-                if (Temperature > Temp_MAX) Temperature = Temp_MAX;
-                if (Temperature < Temp_MIN) Temperature = Temp_MIN;
-                TempData.PseColor[x_p][y_p] = ((Temperature - Temp_MIN) * 255) / ((Temp_MAX - Temp_MIN));
+                if (temperature > Temp_Face) {
+                    if (x_p < face_left) face_left = x_p;
+                    if (x_p > face_right) face_right = x_p;
+                    if (y_p < face_up) face_up = y_p;
+                    if (y_p > face_down) face_down = y_p;
+                    face_temp_sum += temperature;
+                    face_x_sum += x_p;
+                    face_y_sum += y_p;
+                    face_num++;
+                    face_flag = 1;
+                }
+                temp_sum += temperature;
+                TempData.Raw[x_p][y_p] = temperature;
+                if (temperature > Temp_MAX) temperature = Temp_MAX;
+                if (temperature < Temp_MIN) temperature = Temp_MIN;
+                TempData.PseColor[x_p][y_p] = ((temperature - Temp_MIN) * 255) / ((Temp_MAX - Temp_MIN));
                 x_p++;
             }
             y_p++;
         }
-        TempData.Max     = Max;
-        TempData.Min     = Min;
-        TempData.Average = Sum / (32 * 24);
+        TempData.Face_Average = face_temp_sum / face_num;
+        TempData.Face_x       = face_x_sum / face_num;
+        TempData.Face_y       = face_y_sum / face_num;
+        TempData.Face_Up      = face_up;
+        TempData.Face_Down    = face_down;
+        TempData.Face_Left    = face_left;
+        TempData.Face_Right   = face_right;
+        TempData.Face_Flag    = face_flag;
+
+        TempData.Max     = max;
+        TempData.Min     = min;
+        TempData.Average = temp_sum / (32 * 24);
         TempData.Target  = (TempData.Raw[16][12] + TempData.Raw[15][12] + TempData.Raw[16][11] + TempData.Raw[15][11]) / 4;
         return 1;
     }

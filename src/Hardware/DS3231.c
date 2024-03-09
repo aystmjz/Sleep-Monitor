@@ -7,7 +7,7 @@ uint8_t Alarm_Date[2]                   = {8, 0}; // 闹钟时间
 uint8_t Alarm_Status;                             // 闹钟状态
 uint8_t Alarm_Enable_Flag;                        // 闹钟使能标志
 
-struct tm Time_Date; // 全局时间
+struct tm Time_Date; // 全局时间(北京时间)
 
 void DS3231_TurnOnAlarm(void)
 {
@@ -76,6 +76,8 @@ void DS3231_ReadTime()
     mktime(&Time_Date); // 计算星期
 }
 
+/// @brief 获取时间戳
+/// @return 时间戳(北京时间)
 time_t DS3231_GetTimeStamp(void)
 {
     return (mktime(&Time_Date) - 8 * 60 * 60);
@@ -134,12 +136,15 @@ void DS3231_Init()
     }
 }
 
+// 北京时间
 uint8_t IsSameDay(time_t time_cnt1, time_t time_cnt2)
 {
     struct tm time_date1, time_date2;
+    time_cnt1 += 8 * 60 * 60; // 转换回GMT
+    time_cnt2 += 8 * 60 * 60;
     time_date1 = *localtime(&time_cnt1);
     time_date2 = *localtime(&time_cnt2);
-    if (time_date1.tm_yday == time_date2.tm_yday)
+    if (time_date1.tm_yday == time_date2.tm_yday && time_date1.tm_year == time_date2.tm_year)
         return 1;
     else
         return 0;
@@ -147,7 +152,7 @@ uint8_t IsSameDay(time_t time_cnt1, time_t time_cnt2)
 
 uint8_t IsTime(void)
 {
-    static uint8_t last_sec=0;
+    static uint8_t last_sec = 0;
     if (Time_Sec / 10 == last_sec)
         return 0;
     else if ((Time_Hour >= 0 && Time_Hour <= TIME_HOUR_END) || (Time_Hour <= 23 && Time_Hour >= TIME_HOUR_BEGIN)) {
@@ -157,12 +162,22 @@ uint8_t IsTime(void)
         return 0;
 }
 
+uint8_t Check_date(uint8_t w_year, uint8_t w_month, uint8_t w_date)
+{
+    uint8_t Month_buf[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}; // 月份修正表
+    if (w_month == 2)                                                      // 闰年2月+1天
+        (((w_year % 4 == 0) && (w_year % 100 != 0)) || (w_year % 400 == 0)) ? Month_buf[1] += 1 : Month_buf[1];
+    if (w_month > 12 || w_month < 1 || w_date > Month_buf[w_month - 1] || w_date < 1) // 判断月份日期是否合法
+        return 0;
+    return 1;
+}
+
 uint16_t TimeDate_ToAddress(uint8_t hour, uint8_t min, uint8_t sec)
 {
     if (hour <= TIME_HOUR_END) hour += 24;
     hour -= TIME_HOUR_BEGIN;
     sec /= 10;
-    return (hour * 60 * 6 + min * 6 + sec);
+    return (uint16_t)(hour * 60 * 6 + min * 6 + sec) << 4;
 }
 
 uint16_t TimeStamp_ToAddress(time_t time_cnt)

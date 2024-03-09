@@ -1,5 +1,6 @@
 #ifndef __MLX90640_H__
 #define __MLX90640_H__
+#include <stdlib.h>
 #include <math.h>
 #include "stm32f10x.h" // Device header
 #include "usart.h"
@@ -19,6 +20,7 @@ extern uint8_t FPS_MLX90640;
 #define BAR       16
 #define Temp_MAX  4000
 #define Temp_MIN  2000
+#define Temp_Face 2000
 #define ZOOM      8
 
 #define MethodNUM 8
@@ -41,15 +43,18 @@ typedef struct {
     uint8_t Max_x, Max_y, Min_x, Min_y;
     uint16_t Average;
     uint16_t Target;
+    uint8_t Face_Flag;
+    uint8_t Face_Up,Face_Down,Face_Left,Face_Right,Face_x,Face_y;
+    uint16_t Face_Average;
 } TempDataTypeDef;
 
 typedef struct {
-    uint8_t colorR;
-    uint8_t colorG;
-    uint8_t colorB;
     uint8_t RGB_L;
     uint8_t RGB_H;
-    uint16_t RGB;
+    // uint16_t RGB;
+    // uint8_t colorR;
+    // uint8_t colorG;
+    // uint8_t colorB;
 } ColorTypeDef;
 
 extern TempDataTypeDef TempData;
@@ -58,12 +63,13 @@ extern uint8_t Emissivity;
 uint16_t LCD_RGBToDATA(uint8_t colorR, uint8_t colorG, uint8_t colorB);
 void TempPseColor_Init(ConverMethod Method);
 void Show_TempRaw(uint8_t x, uint8_t y);
-void Show_MinAndMax();
+void Show_MinAndMax(uint8_t n);
 uint8_t MLX90640_CheckData(uint8_t *data);
 void MLX90640_SetEmissivity(uint8_t value);
-void MLX90640_SendInitCMD();
+void MLX90640_SendInitCMD(void);
+void MLX90640_TurnOff(void);
 void MLX90640_SendCMD(const uint8_t *CMD);
-void MLX90640_Init();
+void MLX90640_Init(void);
 void Show_PseColorBar(uint8_t x, uint8_t y);
 void Show_TempBilinearInter(uint8_t x, uint8_t y, TempDataTypeDef *Data);
 uint8_t MLX90640_RefreshData(void);

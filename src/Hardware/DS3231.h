@@ -16,7 +16,7 @@
 #define Time_Min        (Time_Date.tm_min)
 #define Time_Sec        (Time_Date.tm_sec)
 
-#define TIME_HOUR_BEGIN 17//22
+#define TIME_HOUR_BEGIN 22
 #define TIME_HOUR_END   9
 //时间段总长度不能超过11小时
 
@@ -35,6 +35,7 @@ void DS3231_ResetAlarm();
 void DS3231_Init();
 uint8_t IsSameDay(time_t time_cnt1, time_t time_cnt2);
 uint8_t IsTime(void);
+uint8_t Check_date(uint8_t w_year, uint8_t w_month, uint8_t w_date);
 uint16_t TimeDate_ToAddress(uint8_t hour, uint8_t min, uint8_t sec);
 uint16_t TimeStamp_ToAddress(time_t time_cnt);
 

@@ -23,7 +23,7 @@ int8_t Menu_Start(int8_t Shift)
 struct Option_Class Menu_StartOptionList[] = {
     {"<<<"},
     {"工具", Menu_RunToolsMenu},
-    {"数据"},
+    {"数据", Menu_RunDataMenu},
     {"游戏", Menu_RunGamesMenu},
     {"设置", Menu_RunSettingMenu},
     {"信息", Menu_Information},
@@ -54,13 +54,13 @@ void Menu_RunMainMenu(void)
 void Menu_StartThermalCamera(void)
 {
     Menu_TurnOffMenu();
-	GlobalState = InitThermalCamera;
+    GlobalState = InitThermalCamera;
 }
 
 void Menu_StartClock(void)
 {
     Menu_TurnOffMenu();
-	GlobalState = InitClock;
+    GlobalState = InitClock;
 }
 
 void Menu_RunToolsMenu(void)
@@ -70,7 +70,7 @@ void Menu_RunToolsMenu(void)
         {"<<<"},
         {"热成像仪", Menu_StartThermalCamera},
         {"红外遥控", Tools_Remote},
-        {"时钟",Menu_StartClock},
+        {"时钟", Menu_StartClock},
         {".."}};
 
     /*创建菜单对象*/
@@ -89,7 +89,7 @@ void Menu_RunToolsMenu(void)
 void Menu_StartNowData(void)
 {
     Menu_TurnOffMenu();
-	GlobalState = InitNowData;
+    GlobalState = InitNowData;
 }
 
 void Menu_RunDataMenu(void)
@@ -97,8 +97,8 @@ void Menu_RunDataMenu(void)
     /*创建选项列表*/
     static struct Option_Class Menu_DataOptionList[] = {
         {"<<<"},
-        {"实时环境数据", Menu_StartThermalCamera},
-        {"历史环境数据", Data_Remote},
+        {"实时环境数据", Menu_StartNowData},
+        {"历史环境数据", Tools_Reader},
         {".."}};
 
     /*创建菜单对象*/
@@ -118,7 +118,7 @@ void Menu_RunGamesMenu(void)
 {
     static struct Option_Class Menu_GamesOptionList[] = {
         {"<<<"},
-        {"贪吃蛇", Game_Snake_Init},      // 贪吃蛇
+        {"贪吃蛇", Game_Snake_Init},         // 贪吃蛇
         {"康威生命游戏", Game_Of_Life_Play}, // 康威生命游戏,元胞自动机
         {".."}};
     static struct Menu_Class Menu_GamesMenu = {multi, 1};
@@ -166,4 +166,3 @@ void Menu_Information(void)
         }
     }
 }
-

@@ -151,49 +151,15 @@ void Battery_Refresh()
     }
 }
 
+void DataProcessing()
+{
+}
+
 // sprintf(str, "Max=%.2d Min=%.2d Average=%.2d Target=%.2d\r\n", TempData.Max / 100, TempData.Min / 100, TempData.Average / 100, TempData.Target / 100);
 // Debug_printf(str);
 
-char *Time_Str;
-char s[20];
-
-void Up_Data()
-{
-    static uint8_t block_index;
-    if (!IsTime()) return; // 是否到了上传数据的时间
-    block_index = W25Q128_GetNewestBlock();
-    if (!IsSameDay(W25Q128_GetBlockTimeStamp(block_index), DS3231_GetTimeStamp())) {
-        block_index++;
-        W25Q128_BlockErase((uint32_t)block_index << 16); // 新块则清除内存
-        W25Q128_WriteBlockTimeStamp((uint32_t)block_index << 16, DS3231_GetTimeStamp());
-    }
-    LED_Turn();
-
-    uint8_t data[16];
-    data[0]  = DATA1;
-    data[1]  = DATA2;
-    data[2]  = DATA3;
-    data[3]  = DATA_NULL;
-    data[4]  = DATA_NULL;
-    data[5]  = DATA_NULL;
-    data[6]  = DATA_NULL;
-    data[7]  = DATA_NULL;
-    data[8]  = DATA_NULL;
-    data[9]  = DATA_NULL;
-    data[10] = DATA_NULL;
-    data[11] = DATA_NULL;
-    data[12] = DATA_NULL;
-    data[13] = DATA_NULL;
-    data[14] = DATA_NULL;
-    data[15] = DATA_NULL;
-    // 上传数据
-    W25Q128_PageProgram(((uint32_t)block_index << 16) | TimeDate_ToAddress(Time_Hour, Time_Min, Time_Sec), data, DATA_LEN);
-}
-extern uint8_t AddressData[16];
-extern uint8_t CommandData[16];
-
+char Temp_str[40];
 char debug_str[100];
-
 
 int main(void)
 {
@@ -206,7 +172,7 @@ int main(void)
     Encoder_Init();
     Key_Init();
     W25Q128_Init();
-    //DS3231_Init();
+    // DS3231_Init();
     CCS811_Init();
     SHT45_Init();
     MAX44009_Init();
@@ -219,33 +185,48 @@ int main(void)
     Remote_Init(REMOTE_Common_Verify);
     BACK_COLOR = WHITE;
     CCS811_SetMeasurementMode(DRIVE_MODE_1SEC);
+    // for(uint32_t i=1;i<=10;i++)
+    // {
+    //     W25Q128_BlockErase((uint32_t)i << 16);
+    //     Delay_ms(500);
+    // }
+    // W25Q128_WriteBlockTimeStamp(1, 1709985965);
+    // while (1) {
+    //     Delay_ms(1000);
+    //     if(MAX44009_GetData())
+    //     {
+    //         sprintf(debug_str, "Lux=%.2f\r\n", MAX.Lux);
+    //         Debug_printf(debug_str);
+    //     }
+    //     if(SHT45_GetData())
+    //     {
+    //         sprintf(debug_str, "Temp=%d.%d Temp=%.2f\r\n", (uint16_t)SHT.Temp,(uint16_t)(SHT.Temp*100)%100,SHT.Temp);
+    //         Debug_printf(debug_str);
+    //     }
+    //     if (CCS811_GetData()) {
+    //         sprintf(debug_str, "eco2=%d  tvoc=%d\r\n", CCS.eco2, CCS.tvoc);
+    //         Debug_printf(debug_str);
+    //     }
+    // }
+// while (1)
+// {
+// Delay_ms(100);
+//     //LCD_ShowNum(20, 24, Menu_RollEvent(),2);
+//     LCD_ShowNum(20, 40, Menu_EnterEvent(),2);
+//     LCD_ShowNum(20, 60, Remote_RepeatCounter,2);
 
-    while (1) {
-        Delay_ms(1000);
-        if(MAX44009_GetData())
-        {
-            sprintf(debug_str, "Lux=%.2f\r\n", MAX.Lux);
-            Debug_printf(debug_str);
-        }
-        if(SHT45_GetData())
-        {
-            sprintf(debug_str, "Temp=%.2f  Hum=%.2f\r\n", SHT.Temp, SHT.Hum);
-            Debug_printf(debug_str);
-        }
-        if (CCS811_GetData()) {
-            sprintf(debug_str, "eco2=%d  tvoc=%d\r\n", CCS.eco2, CCS.tvoc);
-            Debug_printf(debug_str);
-        }
-    }
-
+// }
 
     uint8_t Key_Temp;
+    uint8_t Sec_Temp = 0;
     while (1) {
         switch (GlobalState) {
             case InitMenu:
                 LCD_Clear(BLACK);
+                POINT_COLOR = WHITE;
+                BACK_COLOR  = BLACK;
                 GlobalState = StartMenu;
-                Delay_ms(1000);
+                Delay_ms(500);
                 Key_Get();
                 break;
 
@@ -268,7 +249,7 @@ int main(void)
                 LCD_Clear(WHITE);
                 W25Q128_ReadUserData();
                 MLX90640_SendInitCMD();
-                TempPseColor_Init(GCM_Pseudo2);
+                TempPseColor_Init((ConverMethod)Method);
                 Show_PseColorBar(0, 0);
                 Key_RefreshSelect();
                 GlobalState = StartThermalCamera;
@@ -276,31 +257,29 @@ int main(void)
 
             case StartThermalCamera:
 
-                Key_Temp = Key_Get();
+                Key_Temp = Menu_EnterEvent();
                 LED_Turn();
-
                 if (Key_Temp == 2) {
+                    MLX90640_TurnOff();
                     GlobalState = InitMenu;
                 }
                 if (Key_Temp == 1) {
                     Key_RefreshSelect();
                 }
-
                 Encoder_Action(Encoder_GetCounter());
-
                 if (MLX90640_RefreshData()) {
                     Show_TempRaw(8, 208);
                     Show_TempBilinearInter(0, BAR, &TempData);
                     FPS_MLX90640_Counter++;
                 }
-
-                if (Battery_Flag) Battery_Refresh();
-
+                if (Battery_Flag) {
+                    Battery_Flag = 0;
+                    Battery_Refresh();
+                }
                 if (SelectReset_Flag) {
                     SelectReset_Flag = 0;
                     Key_RefreshSelect();
                 }
-
                 if (PubData_Flag) {
                     PubData_Flag = 0;
                     Data.Temp    = TempData.Target / 100;
@@ -316,18 +295,53 @@ int main(void)
                 break;
 
             case StartClock:
-                if (Key_Get()) GlobalState = InitMenu;
+                if (Menu_EnterEvent()) GlobalState = InitMenu;
                 LED_Turn();
                 DS3231_ReadTime();
-                Time_Str                       = asctime(&Time_Date);
-                Time_Str[strlen(Time_Str) - 1] = '\0';
-                LCD_ShowString(20, 100, (const uint8_t *)Time_Str);
-                sprintf(s, "%d", DS3231_GetTimeStamp());
-                LCD_ShowString(20, 140, (const uint8_t *)s);
+                sprintf(Temp_str, "%s", asctime(&Time_Date));
+                Temp_str[strlen(Temp_str) - 1] = '\0';
+                LCD_ShowString(20, 100, (const uint8_t *)Temp_str);
+                sprintf(Temp_str, "TimeStamp:  %d", DS3231_GetTimeStamp());
+                LCD_ShowString(20, 140, (const uint8_t *)Temp_str);
                 Delay_ms(300);
                 break;
 
+            case InitNowData:
+                LCD_Clear(BLACK);
+                POINT_COLOR = WHITE;
+                BACK_COLOR  = BLACK;
+                GlobalState = StartNowData;
+                break;
+
+            case StartNowData:
+                LED_Turn();
+                if (Menu_EnterEvent())
+                    GlobalState = InitMenu;
+                else
+                    Delay_ms(800);
+                if (MAX44009_GetData()) {
+                    sprintf(Temp_str, "Lux=%.2f     ", MAX.Lux);
+                    LCD_ShowString(20, 20, (const uint8_t *)Temp_str);
+                    Data.Light = MAX.Lux;
+                }
+                if (SHT45_GetData()) {
+                    sprintf(Temp_str, "Temp=%.2f  Hum=%.2f     ", SHT.Temp, SHT.Hum);
+                    LCD_ShowString(20, 40, (const uint8_t *)Temp_str);
+                    Data.Temp = SHT.Temp;
+                    Data.Hum  = SHT.Hum;
+                }
+                if (CCS811_GetData()) {
+                    sprintf(Temp_str, "eco2=%d  tvoc=%d     ", CCS.eco2, CCS.tvoc);
+                    LCD_ShowString(20, 60, (const uint8_t *)Temp_str);
+                    Data.eco2 = CCS.eco2;
+                    Data.tvoc = CCS.tvoc;
+                }
+                Sec_Temp=Time_Sec;
+                DS3231_ReadTime();
+                if ((Sec_Temp/10)!=(Time_Sec/10)) W25Q128_WirteData();
+                break;
             case InitRemote:
+
                 break;
 
             case StartRemote:
@@ -335,7 +349,6 @@ int main(void)
                 break;
 
             case 10:
-
                 break;
         }
     }
@@ -403,7 +416,7 @@ void TIM1_UP_IRQHandler(void)
             key_Counter = 0;
             Key_Entry();
         }
-        if (battery_Counter >= 5000) {
+        if (battery_Counter >= 500) {
             battery_Counter = 0;
             Battery_Flag    = 1;
         }
