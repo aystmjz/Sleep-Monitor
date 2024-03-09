@@ -145,7 +145,7 @@ void Game_Snake_Play(Game_Snake_Class *Snake) // 开始游戏
 
     while (1) // 主循环
     {
-        if (Key_Get() == 2) { return; } // 退出游戏
+        if (Menu_EnterEvent() == 2) { return; } // 退出游戏
 
         temp = Menu_RollEvent();
 

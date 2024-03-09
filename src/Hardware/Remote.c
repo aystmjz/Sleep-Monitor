@@ -190,13 +190,37 @@ uint16_t Remote_GetAddress(void)
     return Address;
 }
 
+uint16_t Remote_GetRawCommand(void)
+{
+    if (ReadyFlag) { // 接收完成
+        ReadyFlag = 0;
+        Remote_Verify();
+        if ((REMOTE_ID_VERIFY) && Address != REMOTE_ID)
+            Command = 0;
+    }
+    return Command;
+}
+
+void Remote_ClearCommand(void)
+{
+    Command = 0;
+}
+
 uint16_t Remote_GetCommand(void)
 {
+    static uint16_t LastCommand;
+    if (Remote_RepeatCounter > 5) {
+        Remote_RepeatCounter = 0;
+        return LastCommand;
+    }
     if (ReadyFlag) { // 接收完成
         ReadyFlag = 0;
         if (Remote_Verify()) {                               // 数据处理校验
             if (!(REMOTE_ID_VERIFY) || Address == REMOTE_ID) // 遥控器ID校验
+            {
+                LastCommand = Command;
                 return Command;
+            }
         }
     }
     return 0;

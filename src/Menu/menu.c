@@ -16,18 +16,45 @@
  * OLED显示函数以江协科技的OLED显示屏驱动程序为基础进行了少量修改
  **********************************************************/
 
+static uint16_t LastCommand;
 /*菜单用到的按键函数独立出来,方便移植和修改,比如没有编码器可以用上下两个按键代替;*/
 int8_t Menu_RollEvent(void) // 菜单滚动
 {
-    return -Encoder_Get_Div4(); // 旋钮编码器PA8,PA9;
+    if (LastCommand == CMD_UP && Remote_RepeatCounter > 1) {
+        Remote_RepeatCounter = 0;
+        return -1;
+    } else if (LastCommand == CMD_DOWN && Remote_RepeatCounter > 1) {
+        Remote_RepeatCounter = 0;
+        return 1;
+    }
+    if (Remote_GetRawCommand() == CMD_UP) {
+        LastCommand = CMD_UP;
+        Remote_ClearCommand();
+        return -1;
+    } else if (Remote_GetRawCommand() == CMD_DOWN) {
+        LastCommand = CMD_DOWN;
+        Remote_ClearCommand();
+        return 1;
+    } else
+        return -Encoder_Get_Div4(); // 旋钮编码器PA8,PA9;
 }
+
 int8_t Menu_EnterEvent(void) // 菜单确认
 {
-    return Key_Get() // 确认键接到PB14;
+    if (LastCommand == CMD_START && Remote_RepeatCounter > 5) {
+        Remote_RepeatCounter = 0;
+        return 2;
+    }
+    if (Remote_GetRawCommand() == CMD_START) {
+        LastCommand = CMD_START;
+        Remote_ClearCommand();
+        return 1;
+    } else
+        return Key_Get(); // 确认键接到PB14
 }
 int8_t Menu_BackEvent(void) // 菜单返回
 {
-    //return Key_Back_Get(); // 返回键接到PB12;
+    // return Key_Back_Get(); // 返回键接到PB12;
     return 0;
 }
 
@@ -35,12 +62,12 @@ enum GlobalStateStyle GlobalState;
 
 /*菜单全局属性*/
 struct MenuProperty Menu_Global = {
-    .isRun    = 0,//菜单是否在运行
+    .isRun = 0, // 菜单是否在运行
 
-    .Cursor_Actual_X = 0,     // 当前光标位置X
-    .Cursor_Actual_Y = 63,    // 当前光标位置Y
-    .Cursor_Actual_W = 0,     // 当前光标尺寸宽
-    .Cursor_Actual_H = 0,     // 当前光标尺寸高
+    .Cursor_Actual_X = 0,  // 当前光标位置X
+    .Cursor_Actual_Y = 63, // 当前光标位置Y
+    .Cursor_Actual_W = 0,  // 当前光标尺寸宽
+    .Cursor_Actual_H = 0,  // 当前光标尺寸高
 
     .Cur_Style       = reverse, // 光标风格;
     .Cursor_ActSpeed = 0.15,    // 光标动画速度系数;
@@ -61,16 +88,15 @@ struct MenuProperty Menu_Global = {
 
 void Menu_SelectOption(void)
 {
-	Menu_Global.RunningMenu->Cur_Style = mouse;
-	Menu_Global.RunningMenu->isReadKey = 0;
+    Menu_Global.RunningMenu->Cur_Style = mouse;
+    Menu_Global.RunningMenu->isReadKey = 0;
 }
 
 void Menu_TurnOffMenu(void)
 {
-	Menu_Global.RunningMenu->isInit=1;
-	Menu_Global.isRun=0;
+    Menu_Global.RunningMenu->isInit = 1;
+    Menu_Global.isRun               = 0;
 }
-
 
 /*菜单对象初始化*/
 void Menu_MenuClassInit(struct Menu_Class *MU, struct Option_Class *Option_List)
@@ -83,9 +109,10 @@ void Menu_MenuClassInit(struct Menu_Class *MU, struct Option_Class *Option_List)
     MU->isReadKey = 1; // 是读取按键
     MU->isCaller  = 0; // 否调用下级程序
 
-	if(Option_List[1].func==Menu_TurnOffMenu)
-    MU->Cat_i         = 2; // 选中下标
-	else MU->Cat_i         = 1; // 选中下标
+    if (Option_List[1].func == Menu_TurnOffMenu)
+        MU->Cat_i = 2; // 选中下标
+    else
+        MU->Cat_i = 1;     // 选中下标
     MU->Cur_i         = 0; // 光标下标
     MU->Cur_i_Ceiling = 0; // 光标限位
 
@@ -157,7 +184,7 @@ int8_t Menu_RunWindow(struct Menu_Class *MU)
     {
         Roll_Event = Menu_RollEvent();
 
-        if (Menu_EnterEvent()==1) {
+        if (Menu_EnterEvent() == 1) {
             /*如果功能不为空则执行功能,否则返回*/
             if (MU->Option_List[MU->Cat_i].func) {
                 MU->Option_List[MU->Cat_i].func();
@@ -261,15 +288,15 @@ int8_t Menu_RunWindow(struct Menu_Class *MU)
         MU->Option_List[MU->Cat_i].func(); // 去喊下级菜单干活
         if (Menu_Global.RunningMenu->Menu_Style != multi) {
             MU->isShow = 0;
-        }
-		else MU->isShow              = 1;
+        } else
+            MU->isShow = 1;
         if (Menu_Global.RunningMenu->isInit) // 如果当前运行菜单(下级)处于需要初始化状态
         {
-			MU->isShow              = 1;
-            MU->isReadKey           = 1; // 我的按键读取启动
+            MU->isShow              = 1;
+            MU->isReadKey           = 1;  // 我的按键读取启动
             MU->isCaller            = 0;  // 我的调用下级关闭
             Menu_Global.RunningMenu = MU; // 当前运行菜单变成我(●'◡'●)
-			if(!Menu_Global.isRun)MU->isInit=1;
+            if (!Menu_Global.isRun) MU->isInit = 1;
         }
     } else {
         // 调用显示光标函数
@@ -285,8 +312,8 @@ int8_t Menu_RunWindow(struct Menu_Class *MU)
     /**********************************************************/
     /*调试信息*/
 
-    //OLED_ShowSignedNum(90, 48, MU->Cur_i, 2, OLED_6X8);
-    //OLED_ShowSignedNum(90, 56, MU->Cat_i, 2, OLED_6X8);
+    // OLED_ShowSignedNum(90, 48, MU->Cur_i, 2, OLED_6X8);
+    // OLED_ShowSignedNum(90, 56, MU->Cat_i, 2, OLED_6X8);
 
     // int delay = 1000000; while(delay--);
     /**********************************************************/
@@ -400,4 +427,3 @@ void Menu_ShowWallpaper(const uint8_t *Wallpaper)
 {
     memcpy(OLED_DisplayBuf, Wallpaper, 1024);
 }
-

@@ -7,6 +7,7 @@
 #include "OLED.h"
 #include "Encoder.h"
 #include "Key.h"
+#include "Remote.h"
 
 #include "Tools.h"
 
@@ -143,6 +144,7 @@ void Menu_ShowWallpaper(const uint8_t *Wallpaper);//显示壁纸
 /**********************************************************/
 void Menu_RunMainMenu(void);
 void Menu_RunToolsMenu(void);
+void Menu_RunDataMenu(void);
 void Menu_RunGamesMenu(void);
 void Menu_RunSettingMenu(void);
 void Menu_Information(void);

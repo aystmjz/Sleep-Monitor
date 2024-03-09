@@ -18,18 +18,6 @@ void Tools_Remote_Transmit(void)
     Remote_Transmit(Remote.Address, Remote.Command);
 }
 
-void Disable_MUReadKey_Frame(void)
-{
-    Menu_Global.RunningMenu->Cur_Style = frame;
-    Menu_Global.RunningMenu->isReadKey = 0;
-}
-
-void Disable_MUReadKey_Mouse(void)
-{
-    Menu_Global.RunningMenu->Cur_Style = mouse;
-    Menu_Global.RunningMenu->isReadKey = 0;
-}
-
 struct Option_Class Remote_Option_List[] = {
     {"<<<"},
     {"关闭", Menu_TurnOffMenu},
@@ -54,7 +42,7 @@ void Tools_Remote(void)
     if (Menu_RemoteMenu.isReadKey == 0) // 如果菜单不读取按键则代表抓住了选项;
     {
         Key_Temp     = Menu_EnterEvent();
-        Encoder_Temp = Encoder_Get_Div4();
+        Encoder_Temp = Menu_RollEvent();
         switch (Menu_RemoteMenu.Cat_i) // 抓住的选项
         {
             case 2:

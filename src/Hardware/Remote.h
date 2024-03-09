@@ -49,6 +49,8 @@ extern uint8_t Remote_RepeatCounter; // 按键按下的次数
 void Remote_Init(RemoteMethod method);
 uint16_t Remote_GetAddress(void);
 uint16_t Remote_GetCommand(void);
+uint16_t Remote_GetRawCommand(void);
+void Remote_ClearCommand(void);
 void Remote_Transmit(uint16_t address, uint16_t command);
 void Remote_SendRepeat(void);
 
