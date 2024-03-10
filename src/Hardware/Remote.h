@@ -45,6 +45,7 @@ typedef enum {
 #define CMD_DOWN                  0x18
 
 extern uint8_t Remote_RepeatCounter; // 按键按下的次数
+extern uint8_t Remote_Free_Flag;
 
 void Remote_Init(RemoteMethod method);
 uint16_t Remote_GetAddress(void);

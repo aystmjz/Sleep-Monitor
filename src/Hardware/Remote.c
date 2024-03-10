@@ -1,6 +1,7 @@
 #include "Remote.h"
 
 static RemoteMethod Method; // 发送模式
+uint8_t Remote_Free_Flag=0;
 
 void Remote_PWMInit(void)
 {
@@ -111,6 +112,7 @@ void TIM2_IRQHandler(void)
     if (TIM_GetITStatus(TIM2, TIM_IT_CC1) != RESET) // 捕获下降沿中断                                                断
     {
         // LED_Turn();
+        if(!Remote_Free_Flag)return;
         TIM_SetCounter(TIM2, 0);
         switch (State) { // 状态机
             case REST:
@@ -276,6 +278,7 @@ void Remote_Transmit(uint16_t address, uint16_t command)
 {
     uint16_t in_address = address;
     uint16_t in_command = command;
+    Remote_Free_Flag=0;
     switch (Method) {
         case REMOTE_Common_Verify:
             in_address = ~address;
