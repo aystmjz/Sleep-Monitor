@@ -160,6 +160,7 @@ void DataProcessing()
 
 char Temp_str[40];
 char debug_str[100];
+extern char RxBuffer[USART_REC_LEN];
 
 int main(void)
 {
@@ -176,15 +177,15 @@ int main(void)
     CCS811_Init();
     SHT45_Init();
     MAX44009_Init();
-    LCD_Init();       // 初始化TFT
-    LCD_Clear(WHITE); // 清屏
-    // EC800_Init();
-    // MQTT_Init();
-    Debug_printf("InitOK!\r\n");
+    LCD_Init();
+    LCD_Clear(WHITE);
     DS3231_Init();
     Remote_Init(REMOTE_Common_Verify);
     BACK_COLOR = WHITE;
     CCS811_SetMeasurementMode(DRIVE_MODE_1SEC);
+    // EC800_Init();
+    // MQTT_Init();
+    Debug_printf("InitOK!\r\n");
     // for(uint32_t i=1;i<=10;i++)
     // {
     //     W25Q128_BlockErase((uint32_t)i << 16);
@@ -208,14 +209,14 @@ int main(void)
     //         Debug_printf(debug_str);
     //     }
     // }
-// while (1)
-// {
-// Delay_ms(100);
-//     //LCD_ShowNum(20, 24, Menu_RollEvent(),2);
-//     LCD_ShowNum(20, 40, Menu_EnterEvent(),2);
-//     LCD_ShowNum(20, 60, Remote_RepeatCounter,2);
+    // while (1)
+    // {
+    // Delay_ms(100);
+    //     //LCD_ShowNum(20, 24, Menu_RollEvent(),2);
+    //     LCD_ShowNum(20, 40, Menu_EnterEvent(),2);
+    //     LCD_ShowNum(20, 60, Remote_RepeatCounter,2);
 
-// }
+    // }
 
     uint8_t Key_Temp;
     uint8_t Sec_Temp = 0;
@@ -280,11 +281,6 @@ int main(void)
                     SelectReset_Flag = 0;
                     Key_RefreshSelect();
                 }
-                if (PubData_Flag) {
-                    PubData_Flag = 0;
-                    Data.Temp    = TempData.Target / 100;
-                    // Pub_Data(MQTT_Topic);
-                }
                 break;
 
             case InitClock:
@@ -336,10 +332,21 @@ int main(void)
                     Data.eco2 = CCS.eco2;
                     Data.tvoc = CCS.tvoc;
                 }
-                Sec_Temp=Time_Sec;
+                if (ATcmd_Scan("\"CMD\":\"Fan\",\"value\":")) {
+                    Remote_Transmit(REMOTE_ID, CMD_START);
+                    Clear_Buffer();
+                }
+
+                Sec_Temp = Time_Sec;
                 DS3231_ReadTime();
-                if ((Sec_Temp/10)!=(Time_Sec/10)) W25Q128_WirteData();
-                break;
+                if ((Sec_Temp / 10) != (Time_Sec / 10)) {
+                    // if (PubData_Flag) {
+                    //     PubData_Flag = 0;
+                    // }
+                    Pub_Data(MQTT_Topic);
+                    W25Q128_WirteData();
+                }
+                   break;
             case InitRemote:
 
                 break;
@@ -401,13 +408,14 @@ int main(void)
 
 void TIM1_UP_IRQHandler(void)
 {
-    static uint16_t key_Counter = 0, battery_Counter = 0, select_Counter = 0, pubDat_Counter = 0;
+    static uint16_t key_Counter = 0, battery_Counter = 0, select_Counter = 0, pubDat_Counter = 0,remote_Free_Counter=0;
     static uint16_t fps_MLX90640_Counter = 0;
     if (TIM_GetITStatus(TIM1, TIM_IT_Update) == SET) {
         key_Counter++;
         battery_Counter++;
         pubDat_Counter++;
         fps_MLX90640_Counter++;
+        remote_Free_Counter++;
         if (Select_State && !EncoderRun_Flag)
             select_Counter++;
         else
@@ -416,7 +424,7 @@ void TIM1_UP_IRQHandler(void)
             key_Counter = 0;
             Key_Entry();
         }
-        if (battery_Counter >= 500) {
+        if (battery_Counter >= 5000) {
             battery_Counter = 0;
             Battery_Flag    = 1;
         }
@@ -428,6 +436,10 @@ void TIM1_UP_IRQHandler(void)
         if (pubDat_Counter >= 5000) {
             pubDat_Counter = 0;
             PubData_Flag   = 1;
+        }
+        if (remote_Free_Counter >= 10) {
+            remote_Free_Counter = 0;
+            Remote_Free_Flag   = 1;
         }
         if (fps_MLX90640_Counter >= 100) {
             fps_MLX90640_Counter = 0;

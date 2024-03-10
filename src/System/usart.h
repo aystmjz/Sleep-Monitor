@@ -6,7 +6,7 @@
 #include "string.h"
 
 
-#define USART_REC_LEN 120
+#define USART_REC_LEN 200
 
 
 void uart1_init(uint32_t bound);

@@ -3,19 +3,20 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 #include "stm32f10x.h"
 #include "usart.h"
-#include "stdlib.h"
-#include "string.h"
 #include "wdg.h"
 #include "Delay.h"
 #include "cJSON.h"
 
 typedef struct
 {
-    double Temp;
-    double Hum;
-    uint32_t Light;
+    float Temp;
+    float Hum;
+    float Light;
+    uint16_t eco2;
+    uint16_t tvoc;
     uint8_t Led;
     uint8_t Beep;
 
@@ -26,11 +27,18 @@ typedef struct
 #define ToByte3(x) ((x >> 16) & 0xff)
 #define ToByte4(x) ((x >> 24) & 0xff)
 
-#define DATA1      (Data.Led)
-#define DATA2      (ToByte1(Data.Light))
-#define DATA3      (ToByte2(Data.Light))
+#define DATA1      ((uint16_t)Data.Temp)
+#define DATA2      ((uint16_t)(Data.Temp * 100) % 100)
+#define DATA3      ((uint16_t)Data.Hum)
+#define DATA4      ((uint16_t)(Data.Hum * 100) % 100)
+#define DATA5      ((uint16_t)Data.Light)
+#define DATA6      ((uint16_t)(Data.Light * 100) % 100)
+#define DATA7      (ToByte2((uint16_t)Data.eco2))
+#define DATA8      (ToByte1((uint16_t)Data.eco2))
+#define DATA9      (ToByte2((uint16_t)Data.tvoc))
+#define DATA10     (ToByte1((uint16_t)Data.tvoc))
 #define DATA_NULL  0XFF
-#define DATA_LEN   3
+#define DATA_LEN   10+1
 
 extern char Debug_str[100];
 extern Environment_DataTypeDef Data;
